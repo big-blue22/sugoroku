@@ -2,9 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BOARD_LAYOUT, BOARD_SIZE, BOARD_COORDINATES } from './constants';
 import { GamePhase, Player, Tile, TileType, GameEvent } from './types';
 import SetupScreen from './components/SetupScreen';
-import TileComponent from './components/Tile';
 import Popup, { PopupType } from './components/Popup';
-import PlayerPawn from './components/PlayerPawn';
+import GameScene from './components/3d/GameScene';
 import { generateGameEvent } from './services/gameService';
 
 // --- Helper to build the board structure ---
@@ -41,6 +40,7 @@ const App: React.FC = () => {
   // Popup State
   const [popupData, setPopupData] = useState<{ msg: string; type: PopupType } | null>(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [autoCamera, setAutoCamera] = useState(true);
 
   // Scroll logs to bottom
   useEffect(() => {
@@ -288,105 +288,30 @@ const App: React.FC = () => {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-grow flex flex-col lg:flex-row overflow-hidden">
+      <main className="flex-grow flex flex-col lg:flex-row overflow-hidden relative">
         
-        {/* Left: The Board */}
-        <div className="flex-grow relative bg-slate-900 p-0 lg:p-4 overflow-auto perspective-board-container flex justify-center items-center">
+        {/* Left: The Board (3D Scene) */}
+        <div className="flex-grow relative bg-slate-900 overflow-hidden h-[50vh] lg:h-auto">
+             <GameScene
+               board={board}
+               players={players}
+               activePlayerIndex={activePlayerIndex}
+               autoCamera={autoCamera}
+             />
 
-            {/* 3D Scene Container */}
-            <div
-                className="relative transition-transform duration-500"
-                style={{
-                   width: '1000px', // Approx 8 columns * 120
-                   height: '700px', // Approx 5 rows * 120 + padding
-                   perspective: '1200px',
-                   transformStyle: 'preserve-3d'
-                }}
-            >
-                {/* The Board Plane */}
-                <div
-                    className="absolute inset-0 bg-slate-800/30 rounded-3xl border-4 border-slate-700 shadow-2xl"
-                    style={{
-                        transform: 'rotateX(60deg) rotateZ(0deg)',
-                        transformStyle: 'preserve-3d',
-                        boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
-                    }}
+             {/* Camera Controls Overlay */}
+             <div className="absolute top-4 right-4 z-10">
+                <button
+                   onClick={() => setAutoCamera(!autoCamera)}
+                   className={`px-3 py-1 text-xs rounded-full font-bold shadow-lg transition-colors ${
+                       autoCamera
+                       ? 'bg-blue-600 text-white hover:bg-blue-500'
+                       : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                   }`}
                 >
-                    {/* Render Tiles */}
-                    {board.map((tile, i) => {
-                        const coords = BOARD_COORDINATES[i] || {x: 0, y: 0};
-                        return (
-                             <TileComponent
-                                key={tile.id}
-                                tile={tile}
-                                className="w-28 h-28 hover:translate-z-2 hover:shadow-xl transition-all duration-300"
-                                style={{
-                                    position: 'absolute',
-                                    left: `${coords.x * TILE_WIDTH + 20}px`,
-                                    top: `${coords.y * TILE_HEIGHT + 20}px`,
-                                    transform: 'translateZ(1px)', // Slight lift to prevent z-fighting
-                                    width: '110px',
-                                    height: '110px'
-                                }}
-                            />
-                        );
-                    })}
-
-                    {/* Path Connectors (Simple arrows or lines) */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-30" style={{ transform: 'translateZ(0px)' }}>
-                       {board.map((_, i) => {
-                           if (i >= board.length - 1) return null;
-                           const start = BOARD_COORDINATES[i];
-                           const end = BOARD_COORDINATES[i+1];
-                           if (!start || !end) return null;
-
-                           const x1 = start.x * TILE_WIDTH + 20 + 55; // Center of tile
-                           const y1 = start.y * TILE_HEIGHT + 20 + 55;
-                           const x2 = end.x * TILE_WIDTH + 20 + 55;
-                           const y2 = end.y * TILE_HEIGHT + 20 + 55;
-
-                           return (
-                               <line
-                                 key={`path-${i}`}
-                                 x1={x1} y1={y1} x2={x2} y2={y2}
-                                 stroke="white"
-                                 strokeWidth="4"
-                                 strokeDasharray="8 8"
-                               />
-                           );
-                       })}
-                    </svg>
-                </div>
-
-                {/* Players Layer (Independent of Board Plane Rotation usually, but if we want them ON the board, they need to be in the scene) */}
-                {/*
-                    If we put players inside the rotated board div, they rotate with it.
-                    We need to counter-rotate them (done in PlayerPawn).
-                    But positioning is easier if they are children of the rotated board.
-                */}
-                 <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                        transform: 'rotateX(60deg) rotateZ(0deg)', // Match board rotation
-                        transformStyle: 'preserve-3d',
-                    }}
-                >
-                    {players.map((player) => {
-                        const coords = BOARD_COORDINATES[player.position] || {x: 0, y: 0};
-                        return (
-                            <PlayerPawn
-                                key={player.id}
-                                avatar={player.avatar}
-                                color={player.color}
-                                x={coords.x}
-                                y={coords.y}
-                                isMoving={isRolling && player.id === activePlayer.id} // rough approximation
-                            />
-                        );
-                    })}
-                </div>
-
-            </div>
+                   {autoCamera ? '🎥 自動追従 ON' : '🎥 自動追従 OFF'}
+                </button>
+             </div>
         </div>
 
         {/* Right: Controls & Logs */}
