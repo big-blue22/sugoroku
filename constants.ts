@@ -1,4 +1,4 @@
-import { TileType } from '../types';
+import { TileType } from './types';
 
 export const BOARD_SIZE = 30;
 

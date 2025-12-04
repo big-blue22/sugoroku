@@ -34,7 +34,7 @@ const PlayerPawn3D: React.FC<PlayerPawn3DProps> = ({ player, targetPosition, col
   });
 
   return (
-    <group ref={groupRef} position={targetPosition}>
+    <group ref={groupRef}>
       {/* Pawn Shape: Cone + Sphere head */}
       <mesh position={[0, 0, 0]} castShadow>
         <cylinderGeometry args={[0.2, 0.4, 0.8, 16]} />
