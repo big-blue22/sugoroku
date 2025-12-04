@@ -4,7 +4,7 @@ import { GamePhase, Player, Tile, TileType, GameEvent } from './types';
 import SetupScreen from './components/SetupScreen';
 import TileComponent from './components/Tile';
 import Popup, { PopupType } from './components/Popup';
-import { generateGameEvent } from './services/geminiService';
+import { generateGameEvent } from './services/gameService';
 
 // --- Helper to build the board structure ---
 const buildBoard = (): Tile[] => {
