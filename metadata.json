@@ -1,0 +1,5 @@
+{
+  "name": "AI冒険すごろく",
+  "description": "最大4人で遊べるダイナミックなボードゲーム。AIゲームマスター（Gemini 2.5）がユニークなイベントや試練を生成します。",
+  "requestFramePermissions": []
+}
