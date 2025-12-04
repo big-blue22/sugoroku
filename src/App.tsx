@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BOARD_LAYOUT, BOARD_SIZE } from './constants';
 import { GamePhase, Player, Tile, TileType, GameEvent } from './types';
 import SetupScreen from './components/SetupScreen';
-import TileComponent from './components/Tile';
 import Popup, { PopupType } from './components/Popup';
 import { generateGameEvent } from './services/gameService';
+import GameScene from './components/3d/GameScene';
 
 // --- Helper to build the board structure ---
 const buildBoard = (): Tile[] => {
@@ -285,18 +285,9 @@ const App: React.FC = () => {
       <main className="flex-grow flex flex-col lg:flex-row overflow-hidden">
         
         {/* Left: The Board */}
-        <div className="flex-grow relative overflow-y-auto bg-slate-900 p-4 lg:p-8 perspective-board-container">
-            <div className="max-w-4xl mx-auto pb-24">
-              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-6 gap-3 sm:gap-4">
-                  {board.map((tile) => (
-                    <TileComponent 
-                      key={tile.id} 
-                      tile={tile} 
-                      playersOnTile={players.filter(p => p.position === tile.id)} 
-                    />
-                  ))}
-              </div>
-            </div>
+        <div className="flex-grow relative bg-slate-900 p-0 overflow-hidden">
+             {/* 3D Game Scene */}
+             <GameScene board={board} players={players} />
         </div>
 
         {/* Right: Controls & Logs */}

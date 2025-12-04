@@ -1,4 +1,4 @@
-import { TileType } from './types';
+import { TileType } from '../types';
 
 export const BOARD_SIZE = 30;
 
@@ -43,4 +43,23 @@ export const BOARD_LAYOUT: TileType[] = [
   TileType.GOOD,
   TileType.NORMAL,
   TileType.GOAL
+];
+
+// Snake pattern coordinates (x, y)
+// 0,0  1,0  2,0  3,0  4,0  5,0  6,0
+//                                |
+// 0,1  1,1  2,1  3,1  4,1  5,1  6,1
+// |
+// 0,2 ...
+export const BOARD_COORDINATES = [
+  // Row 0 (Right)
+  {x: 0, y: 0}, {x: 1, y: 0}, {x: 2, y: 0}, {x: 3, y: 0}, {x: 4, y: 0}, {x: 5, y: 0}, {x: 6, y: 0},
+  // Row 1 (Left)
+  {x: 6, y: 1}, {x: 5, y: 1}, {x: 4, y: 1}, {x: 3, y: 1}, {x: 2, y: 1}, {x: 1, y: 1}, {x: 0, y: 1},
+  // Row 2 (Right)
+  {x: 0, y: 2}, {x: 1, y: 2}, {x: 2, y: 2}, {x: 3, y: 2}, {x: 4, y: 2}, {x: 5, y: 2}, {x: 6, y: 2},
+  // Row 3 (Left)
+  {x: 6, y: 3}, {x: 5, y: 3}, {x: 4, y: 3}, {x: 3, y: 3}, {x: 2, y: 3}, {x: 1, y: 3}, {x: 0, y: 3},
+  // Row 4 (Right - Finish)
+  {x: 0, y: 4}, {x: 1, y: 4}
 ];
