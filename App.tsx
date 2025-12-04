@@ -21,6 +21,12 @@ const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [activePlayerIndex, setActivePlayerIndex] = useState(0);
   const [board] = useState<Tile[]>(buildBoard());
+
+  // Ref to keep track of latest players state for async operations
+  const playersRef = useRef(players);
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
   const [logs, setLogs] = useState<string[]>([]);
   
   // Game State for UI
@@ -28,6 +34,7 @@ const App: React.FC = () => {
   const [diceValue, setDiceValue] = useState<number | null>(null);
   const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null);
   const [isProcessingEvent, setIsProcessingEvent] = useState(false);
+  const [turnActive, setTurnActive] = useState(false);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
   // Popup State
@@ -91,6 +98,7 @@ const App: React.FC = () => {
              setActivePlayerIndex(nextNextIndex);
              addLog(`👉 ${players[nextNextIndex].name} のターンです。`);
              triggerPopup(`${players[nextNextIndex].name} の番です`, 'info');
+             setTurnActive(false);
         }, 2000);
         return;
     }
@@ -98,21 +106,45 @@ const App: React.FC = () => {
     setActivePlayerIndex(nextIndex);
     addLog(`👉 ${players[nextIndex].name} のターンです。`);
     triggerPopup(`${players[nextIndex].name} の番です`, 'info');
+    setTurnActive(false);
   }, [activePlayerIndex, players]);
 
+  const updatePlayerPosition = (playerId: number, pos: number) => {
+    setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, position: pos } : p));
+  };
+
   const movePlayer = async (playerId: number, steps: number) => {
-    return new Promise<number>((resolve) => {
-      setPlayers(prevPlayers => {
-        const updated = prevPlayers.map(p => {
-          if (p.id !== playerId) return p;
-          let newPos = p.position + steps;
-          if (newPos >= BOARD_SIZE - 1) newPos = BOARD_SIZE - 1;
-          if (newPos < 0) newPos = 0;
-          return { ...p, position: newPos };
-        });
-        resolve(updated.find(p => p.id === playerId)?.position || 0);
-        return updated;
-      });
+    const player = playersRef.current.find(p => p.id === playerId);
+    if (!player) return 0;
+
+    let currentPos = player.position;
+    const direction = steps > 0 ? 1 : -1;
+    let remainingSteps = Math.abs(steps);
+
+    return new Promise<number>(async (resolve) => {
+      while (remainingSteps > 0) {
+        const nextPos = currentPos + direction;
+
+        // Check boundaries
+        if (nextPos >= BOARD_SIZE - 1) {
+          updatePlayerPosition(playerId, BOARD_SIZE - 1);
+          currentPos = BOARD_SIZE - 1;
+          break; // Stop at goal
+        }
+        if (nextPos <= 0) {
+          updatePlayerPosition(playerId, 0);
+          currentPos = 0;
+          break; // Stop at start
+        }
+
+        updatePlayerPosition(playerId, nextPos);
+        currentPos = nextPos;
+        remainingSteps--;
+
+        // Wait for animation
+        await new Promise(r => setTimeout(r, 400));
+      }
+      resolve(currentPos);
     });
   };
 
@@ -198,8 +230,9 @@ const App: React.FC = () => {
   };
 
   const handleRollDice = async () => {
-    if (isRolling) return;
+    if (isRolling || turnActive) return;
     setIsRolling(true);
+    setTurnActive(true);
     
     // Animation simulation
     let roll = 1;
@@ -304,9 +337,9 @@ const App: React.FC = () => {
                     </div>
                     <button
                       onClick={handleRollDice}
-                      disabled={isRolling}
+                      disabled={isRolling || turnActive}
                       className={`w-full py-3 rounded-xl font-bold text-lg transition-all transform active:scale-95 ${
-                        isRolling 
+                        isRolling || turnActive
                           ? 'bg-slate-600 cursor-not-allowed text-slate-400' 
                           : `bg-gradient-to-r from-${activePlayer.color}-500 to-${activePlayer.color}-600 hover:brightness-110 shadow-lg shadow-${activePlayer.color}-500/40`
                       }`}
