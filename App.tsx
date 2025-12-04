@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { BOARD_LAYOUT, BOARD_SIZE } from './constants';
+import { BOARD_LAYOUT, BOARD_SIZE, BOARD_COORDINATES } from './constants';
 import { GamePhase, Player, Tile, TileType, GameEvent } from './types';
 import SetupScreen from './components/SetupScreen';
 import TileComponent from './components/Tile';
 import Popup, { PopupType } from './components/Popup';
+import PlayerPawn from './components/PlayerPawn';
 import { generateGameEvent } from './services/gameService';
 
 // --- Helper to build the board structure ---
@@ -261,6 +262,11 @@ const App: React.FC = () => {
 
   const activePlayer = players[activePlayerIndex];
 
+  // --- Constants for Board Rendering ---
+  const TILE_WIDTH = 120;
+  const TILE_HEIGHT = 120;
+  const GAP = 0;
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-900 text-slate-100 font-sans">
       
@@ -285,17 +291,101 @@ const App: React.FC = () => {
       <main className="flex-grow flex flex-col lg:flex-row overflow-hidden">
         
         {/* Left: The Board */}
-        <div className="flex-grow relative overflow-y-auto bg-slate-900 p-4 lg:p-8 perspective-board-container">
-            <div className="max-w-4xl mx-auto pb-24">
-              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-6 gap-3 sm:gap-4">
-                  {board.map((tile) => (
-                    <TileComponent 
-                      key={tile.id} 
-                      tile={tile} 
-                      playersOnTile={players.filter(p => p.position === tile.id)} 
-                    />
-                  ))}
-              </div>
+        <div className="flex-grow relative bg-slate-900 p-0 lg:p-4 overflow-auto perspective-board-container flex justify-center items-center">
+
+            {/* 3D Scene Container */}
+            <div
+                className="relative transition-transform duration-500"
+                style={{
+                   width: '1000px', // Approx 8 columns * 120
+                   height: '700px', // Approx 5 rows * 120 + padding
+                   perspective: '1200px',
+                   transformStyle: 'preserve-3d'
+                }}
+            >
+                {/* The Board Plane */}
+                <div
+                    className="absolute inset-0 bg-slate-800/30 rounded-3xl border-4 border-slate-700 shadow-2xl"
+                    style={{
+                        transform: 'rotateX(60deg) rotateZ(0deg)',
+                        transformStyle: 'preserve-3d',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+                    }}
+                >
+                    {/* Render Tiles */}
+                    {board.map((tile, i) => {
+                        const coords = BOARD_COORDINATES[i] || {x: 0, y: 0};
+                        return (
+                             <TileComponent
+                                key={tile.id}
+                                tile={tile}
+                                className="w-28 h-28 hover:translate-z-2 hover:shadow-xl transition-all duration-300"
+                                style={{
+                                    position: 'absolute',
+                                    left: `${coords.x * TILE_WIDTH + 20}px`,
+                                    top: `${coords.y * TILE_HEIGHT + 20}px`,
+                                    transform: 'translateZ(1px)', // Slight lift to prevent z-fighting
+                                    width: '110px',
+                                    height: '110px'
+                                }}
+                            />
+                        );
+                    })}
+
+                    {/* Path Connectors (Simple arrows or lines) */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-30" style={{ transform: 'translateZ(0px)' }}>
+                       {board.map((_, i) => {
+                           if (i >= board.length - 1) return null;
+                           const start = BOARD_COORDINATES[i];
+                           const end = BOARD_COORDINATES[i+1];
+                           if (!start || !end) return null;
+
+                           const x1 = start.x * TILE_WIDTH + 20 + 55; // Center of tile
+                           const y1 = start.y * TILE_HEIGHT + 20 + 55;
+                           const x2 = end.x * TILE_WIDTH + 20 + 55;
+                           const y2 = end.y * TILE_HEIGHT + 20 + 55;
+
+                           return (
+                               <line
+                                 key={`path-${i}`}
+                                 x1={x1} y1={y1} x2={x2} y2={y2}
+                                 stroke="white"
+                                 strokeWidth="4"
+                                 strokeDasharray="8 8"
+                               />
+                           );
+                       })}
+                    </svg>
+                </div>
+
+                {/* Players Layer (Independent of Board Plane Rotation usually, but if we want them ON the board, they need to be in the scene) */}
+                {/*
+                    If we put players inside the rotated board div, they rotate with it.
+                    We need to counter-rotate them (done in PlayerPawn).
+                    But positioning is easier if they are children of the rotated board.
+                */}
+                 <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                        transform: 'rotateX(60deg) rotateZ(0deg)', // Match board rotation
+                        transformStyle: 'preserve-3d',
+                    }}
+                >
+                    {players.map((player) => {
+                        const coords = BOARD_COORDINATES[player.position] || {x: 0, y: 0};
+                        return (
+                            <PlayerPawn
+                                key={player.id}
+                                avatar={player.avatar}
+                                color={player.color}
+                                x={coords.x}
+                                y={coords.y}
+                                isMoving={isRolling && player.id === activePlayer.id} // rough approximation
+                            />
+                        );
+                    })}
+                </div>
+
             </div>
         </div>
 
