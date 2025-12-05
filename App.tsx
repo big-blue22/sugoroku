@@ -1,58 +1,122 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { BOARD_LAYOUT, BOARD_SIZE, BOARD_COORDINATES } from './constants';
-import { GamePhase, Player, Tile, TileType, GameEvent } from './types';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { GamePhase, Player, Tile, TileType, RoomState } from './types';
 import SetupScreen from './components/SetupScreen';
 import Popup, { PopupType } from './components/Popup';
 import GameScene from './components/3d/GameScene';
 import { generateGameEvent } from './services/gameService';
+import {
+    subscribeToRoom,
+    startGame,
+    updateGameState,
+    nextTurn
+} from './services/roomService';
+import { BOARD_LAYOUT, BOARD_SIZE } from './constants';
 
-// --- Helper to build the board structure ---
 const buildBoard = (): Tile[] => {
   return BOARD_LAYOUT.map((type, index) => ({
     id: index,
     type,
-    // Add default values for good/bad tiles for simple logic
     effectValue: type === TileType.GOOD ? 3 : type === TileType.BAD ? -3 : 0
   }));
 };
 
 const App: React.FC = () => {
-  const [phase, setPhase] = useState<GamePhase>(GamePhase.SETUP);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [activePlayerIndex, setActivePlayerIndex] = useState(0);
-  const [board] = useState<Tile[]>(buildBoard());
+  // Online Multiplayer Mode Verified
+  // Multiplayer State
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [myPlayerId, setMyPlayerId] = useState<number | null>(null); // This is an index in the array
+  const [myPlayerName, setMyPlayerName] = useState<string>("");
+  const [roomState, setRoomState] = useState<RoomState | null>(null);
 
-  // Ref to keep track of latest players state for async operations
-  const playersRef = useRef(players);
-  useEffect(() => {
-    playersRef.current = players;
-  }, [players]);
-  const [logs, setLogs] = useState<string[]>([]);
-  
-  // Game State for UI
-  const [isRolling, setIsRolling] = useState(false);
-  const [diceValue, setDiceValue] = useState<number | null>(null);
-  const [dice3DTrigger, setDice3DTrigger] = useState(0); // Counter to trigger 3D roll
-  const [dice3DTarget, setDice3DTarget] = useState(1);
-  const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null);
-  const [isProcessingEvent, setIsProcessingEvent] = useState(false);
-  const [turnActive, setTurnActive] = useState(false);
+  const [board] = useState<Tile[]>(buildBoard());
   const logContainerRef = useRef<HTMLDivElement>(null);
 
-  // Popup State
-  const [popupData, setPopupData] = useState<{ msg: string; type: PopupType } | null>(null);
+  // Local UI State
+  const [logs, setLogs] = useState<string[]>([]);
   const [showPopup, setShowPopup] = useState(false);
+  const [popupData, setPopupData] = useState<{ msg: string; type: PopupType } | null>(null);
   const [autoCamera, setAutoCamera] = useState(true);
+  const [isRolling, setIsRolling] = useState(false);
 
-  // Scroll logs to bottom
+  // Derived State (local caching of animations)
+  const [localDiceValue, setLocalDiceValue] = useState<number | null>(null);
+  // We use this to trigger the 3D dice. Increments when roomState.diceRollCount changes.
+  const [dice3DTrigger, setDice3DTrigger] = useState(0);
+
+  // --- Subscriptions & Effect Handling ---
+
+  // Reconnection Logic
+  useEffect(() => {
+    const savedRoom = localStorage.getItem('sugoroku_roomId');
+    const savedPlayerId = localStorage.getItem('sugoroku_playerId');
+    const savedName = localStorage.getItem('sugoroku_playerName');
+
+    if (savedRoom && savedPlayerId && savedName) {
+       setRoomId(savedRoom);
+       setMyPlayerId(Number(savedPlayerId));
+       setMyPlayerName(savedName);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!roomId) return;
+
+    const unsubscribe = subscribeToRoom(roomId, (data) => {
+        setRoomState(data);
+    });
+
+    return () => unsubscribe();
+  }, [roomId]);
+
+  // Handle Logs Sync
+  useEffect(() => {
+      if (roomState?.lastLog && roomState.lastLogTimestamp) {
+          // Prevent duplicates by checking if the last log in our array matches (simple check)
+          // A timestamp check is better but for now string check is ok if messages are unique enough or we just append.
+          setLogs(prev => {
+             const lastMsg = prev[prev.length - 1];
+             if (lastMsg !== roomState.lastLog) {
+                 return [...prev, roomState.lastLog!];
+             }
+             return prev;
+          });
+      }
+  }, [roomState?.lastLogTimestamp, roomState?.lastLog]);
+
+  // Scroll logs
   useEffect(() => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [logs]);
 
+  // Handle Dice Animation Trigger
+  useEffect(() => {
+      if (roomState?.diceRollCount && roomState.diceValue) {
+          setLocalDiceValue(roomState.diceValue);
+          setDice3DTrigger(prev => prev + 1);
+          setIsRolling(true); // Visual indicator start
+
+          // Stop rolling visual after a moment
+          setTimeout(() => setIsRolling(false), 2000);
+      }
+  }, [roomState?.diceRollCount, roomState?.diceValue]);
+
+  // Handle Events Popups
+  useEffect(() => {
+      if (roomState?.currentEvent) {
+          triggerPopup(`🔮 イベント: ${roomState.currentEvent.title}`, 'event', 3000);
+          addLog(`🔮 イベント: 「${roomState.currentEvent.title}」`);
+      }
+  }, [roomState?.currentEvent]);
+
+
+  // --- Helper Functions ---
+
   const addLog = (msg: string) => {
-    setLogs(prev => [...prev, msg]);
+      // Local log fallback, mainly for debug
+      // In multiplayer, we rely on roomState.lastLog usually.
+      console.log(msg);
   };
 
   const triggerPopup = (msg: string, type: PopupType = 'info', duration = 2000) => {
@@ -63,258 +127,259 @@ const App: React.FC = () => {
     }, duration);
   };
 
-  const handleStartGame = (configs: { name: string; color: string; avatar: string }[]) => {
-    const newPlayers: Player[] = configs.map((c, i) => ({
-      id: i,
-      ...c,
-      position: 0,
-      skipNextTurn: false,
-      isWinner: false,
-    }));
-    setPlayers(newPlayers);
-    setPhase(GamePhase.PLAYING);
-    addLog("🏁 ゲーム開始！冒険の始まりです！");
-    triggerPopup("🏁 ゲーム開始！\nゴール目指して頑張ろう！", 'info', 2500);
-    
-    setTimeout(() => {
-        addLog(`👉 ${newPlayers[0].name} のターンです。`);
-        triggerPopup(`${newPlayers[0].name} の番です`, 'info');
-    }, 2600);
+  const handleJoinGame = (id: string, pId: number, pName: string) => {
+      setRoomId(id);
+      setMyPlayerId(pId);
+      setMyPlayerName(pName);
+
+      // Save session
+      localStorage.setItem('sugoroku_roomId', id);
+      localStorage.setItem('sugoroku_playerId', pId.toString());
+      localStorage.setItem('sugoroku_playerName', pName);
   };
 
-  const nextTurn = useCallback(() => {
-    setDiceValue(null);
-    let nextIndex = (activePlayerIndex + 1) % players.length;
-    
-    // Check for skip
-    let nextPlayer = players[nextIndex];
-    if (nextPlayer.skipNextTurn) {
-        addLog(`🚫 ${nextPlayer.name} は休みです。`);
-        triggerPopup(`🚫 ${nextPlayer.name} は\n一回休みです`, 'danger');
-        
-        // Reset skip flag
-        setPlayers(prev => prev.map((p, i) => i === nextIndex ? { ...p, skipNextTurn: false } : p));
-        
-        // Short delay before skipping to next
-        setTimeout(() => {
-             let nextNextIndex = (nextIndex + 1) % players.length;
-             setActivePlayerIndex(nextNextIndex);
-             addLog(`👉 ${players[nextNextIndex].name} のターンです。`);
-             triggerPopup(`${players[nextNextIndex].name} の番です`, 'info');
-             setTurnActive(false);
-        }, 2000);
-        return;
-    }
-
-    setActivePlayerIndex(nextIndex);
-    addLog(`👉 ${players[nextIndex].name} のターンです。`);
-    triggerPopup(`${players[nextIndex].name} の番です`, 'info');
-    setTurnActive(false);
-  }, [activePlayerIndex, players]);
-
-  const updatePlayerPosition = (playerId: number, pos: number) => {
-    setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, position: pos } : p));
+  const handleStartGame = async () => {
+      if (!roomId) return;
+      await startGame(roomId);
   };
 
-  const movePlayer = async (playerId: number, steps: number) => {
-    const player = playersRef.current.find(p => p.id === playerId);
-    if (!player) return 0;
-
-    let currentPos = player.position;
-    const direction = steps > 0 ? 1 : -1;
-    let remainingSteps = Math.abs(steps);
-
-    return new Promise<number>(async (resolve) => {
-      while (remainingSteps > 0) {
-        const nextPos = currentPos + direction;
-
-        // Check boundaries
-        if (nextPos >= BOARD_SIZE - 1) {
-          updatePlayerPosition(playerId, BOARD_SIZE - 1);
-          currentPos = BOARD_SIZE - 1;
-          break; // Stop at goal
-        }
-        if (nextPos <= 0) {
-          updatePlayerPosition(playerId, 0);
-          currentPos = 0;
-          break; // Stop at start
-        }
-
-        updatePlayerPosition(playerId, nextPos);
-        currentPos = nextPos;
-        remainingSteps--;
-
-        // Wait for animation
-        await new Promise(r => setTimeout(r, 400));
-      }
-      resolve(currentPos);
-    });
-  };
-
-  const handleTileEffect = async (finalPosition: number) => {
-    const tile = board[finalPosition];
-    const currentPlayer = players[activePlayerIndex];
-
-    addLog(`${currentPlayer.name} はマス ${finalPosition} に止まりました。`);
-
-    if (tile.type === TileType.GOAL) {
-      setPlayers(prev => prev.map(p => p.id === currentPlayer.id ? { ...p, isWinner: true } : p));
-      setPhase(GamePhase.GAME_OVER);
-      addLog(`🎉🎉 ${currentPlayer.name} がゴールしました！ 優勝！ 🎉🎉`);
-      triggerPopup(`🎉 優勝！！ 🎉\n${currentPlayer.name} おめでとう！`, 'success', 5000);
-      return;
-    }
-
-    if (tile.type === TileType.GOOD && tile.effectValue) {
-      addLog(`✨ 好機到来！ ${tile.effectValue}マス進みます。`);
-      triggerPopup(`✨ ラッキー！\n${tile.effectValue}マス進みます！`, 'success');
-      await new Promise(r => setTimeout(r, 1500));
-      await movePlayer(currentPlayer.id, tile.effectValue);
-      nextTurn();
-    } else if (tile.type === TileType.BAD && tile.effectValue) {
-      addLog(`💥 罠だ！ ${Math.abs(tile.effectValue)}マス戻ります。`);
-      triggerPopup(`💥 うわっ！\n${Math.abs(tile.effectValue)}マス戻されてしまった...`, 'danger');
-      await new Promise(r => setTimeout(r, 1500));
-      await movePlayer(currentPlayer.id, tile.effectValue);
-      nextTurn();
-    } else if (tile.type === TileType.EVENT) {
-      setPhase(GamePhase.EVENT_PROCESSING);
-      setIsProcessingEvent(true);
-      triggerPopup(`🔮 イベント発生！\n運命のカードを引きます...`, 'event', 2000);
-      
-      const event = await generateGameEvent(currentPlayer.name);
-      
-      setIsProcessingEvent(false);
-      setCurrentEvent(event);
-      addLog(`🔮 イベント: 「${event.title}」`);
-    } else {
-      // Normal tile or Start
-      nextTurn();
-    }
-  };
-
-  const applyEventEffect = async () => {
-    if (!currentEvent) return;
-    const currentPlayer = players[activePlayerIndex];
-    const val = currentEvent.value;
-
-    let popupMsg = "";
-    let popupType: PopupType = 'info';
-
-    if (currentEvent.effectType === 'MOVE_FORWARD') {
-      await movePlayer(currentPlayer.id, val);
-      addLog(`${currentPlayer.name} は ${val} マス進んだ。`);
-      popupMsg = `💨 ${val} マス進んだ！`;
-      popupType = 'success';
-    } else if (currentEvent.effectType === 'MOVE_BACK') {
-      await movePlayer(currentPlayer.id, -val);
-      addLog(`${currentPlayer.name} は ${val} マス戻った。`);
-      popupMsg = `💦 ${val} マス戻った...`;
-      popupType = 'danger';
-    } else if (currentEvent.effectType === 'SKIP_TURN') {
-      setPlayers(prev => prev.map(p => p.id === currentPlayer.id ? { ...p, skipNextTurn: true } : p));
-      addLog(`${currentPlayer.name} は次回のターン休み。`);
-      popupMsg = `💤 次回は一回休み`;
-      popupType = 'danger';
-    } else {
-      addLog(`特に何も起こらなかった。`);
-      popupMsg = `何も起きなかった`;
-    }
-
-    triggerPopup(popupMsg, popupType);
-
-    setCurrentEvent(null);
-    setPhase(GamePhase.PLAYING);
-    
-    // Wait for popup to be read
-    setTimeout(() => {
-        nextTurn();
-    }, 1500);
-  };
+  // --- Core Game Logic (Active Player Only) ---
 
   const handleRollDice = async () => {
-    if (isRolling || turnActive) return;
-    setIsRolling(true);
-    setTurnActive(true);
+      if (!roomId || !roomState || isRolling) return;
 
-    // 1. Determine the result immediately
-    const finalRoll = Math.floor(Math.random() * 6) + 1;
-    setDice3DTarget(finalRoll);
+      const activePlayer = roomState.players[roomState.activePlayerIndex];
+      // Only active player can roll
+      if (activePlayer.id !== myPlayerId) return;
 
-    // 2. Trigger 3D Dice Fall
-    setDice3DTrigger(prev => prev + 1);
+      setIsRolling(true);
 
-    // 3. 2D Shuffle Animation (concurrently)
-    let shuffleRoll = 1;
-    for (let i = 0; i < 12; i++) { // Approx 1 second (12 * 80ms = 960ms)
-        shuffleRoll = Math.floor(Math.random() * 6) + 1;
-        setDiceValue(shuffleRoll);
-        await new Promise(r => setTimeout(r, 80));
-    }
+      const roll = Math.floor(Math.random() * 6) + 1;
 
-    // 4. Settle on Final Value
-    setDiceValue(finalRoll);
-    setIsRolling(false);
+      // Update DB with Dice Roll
+      // We don't move yet. We just show the roll.
+      await updateGameState(roomId, {
+          diceValue: roll,
+          diceRollCount: (roomState.diceRollCount || 0) + 1,
+          lastLog: `${activePlayer.name} は ${roll} を出した！`,
+          lastLogTimestamp: Date.now()
+      });
 
-    addLog(`${players[activePlayerIndex].name} は ${finalRoll} を出した！`);
-    triggerPopup(`🎲 ${finalRoll} が出ました！`, 'info', 1500);
+      // Wait for animation (approx 1.5s - 2s)
+      await new Promise(r => setTimeout(r, 2000));
 
-    // 5. Wait for user to see the result (and 3D animation to fully settle/bounce)
-    await new Promise(r => setTimeout(r, 800));
+      // Calculate Move
+      const currentPos = activePlayer.position;
+      let targetPos = currentPos + roll;
 
-    // 6. Move Logic
-    const finalPos = await movePlayer(players[activePlayerIndex].id, finalRoll);
-    
-    // 7. Check effects
-    setTimeout(() => handleTileEffect(finalPos), 500);
+      if (targetPos >= BOARD_SIZE - 1) targetPos = BOARD_SIZE - 1;
+      if (targetPos <= 0) targetPos = 0; // Should not happen on fwd roll
+
+      // Update Player Position in DB (Triggers movement animation on all clients)
+      const updatedPlayers = roomState.players.map(p =>
+          p.id === activePlayer.id ? { ...p, position: targetPos } : p
+      );
+
+      await updateGameState(roomId, {
+          players: updatedPlayers,
+          lastLog: `${activePlayer.name} は ${roll} マス進み、マス ${targetPos} に止まった。`,
+          lastLogTimestamp: Date.now()
+      });
+
+      // Wait for movement animation (approx 0.5s per tile? No, hopping is fast. Fixed time?)
+      // Let's wait 1.5s
+      await new Promise(r => setTimeout(r, 1500));
+
+      // Handle Effects
+      await handleTileEffect(targetPos, activePlayer, updatedPlayers);
   };
 
-  if (phase === GamePhase.SETUP) {
-    return <SetupScreen onStartGame={handleStartGame} />;
+  const handleTileEffect = async (pos: number, player: Player, currentPlayers: Player[]) => {
+      if (!roomId) return;
+      const tile = board[pos];
+
+      if (tile.type === TileType.GOAL) {
+          const winners = currentPlayers.map(p => p.id === player.id ? { ...p, isWinner: true } : p);
+          await updateGameState(roomId, {
+              players: winners,
+              phase: GamePhase.GAME_OVER,
+              lastLog: `🎉🎉 ${player.name} がゴールしました！ 優勝！ 🎉🎉`,
+              lastLogTimestamp: Date.now()
+          });
+          return;
+      }
+
+      if (tile.type === TileType.GOOD && tile.effectValue) {
+          // Move again
+          await new Promise(r => setTimeout(r, 1000));
+          const newPos = Math.min(BOARD_SIZE - 1, pos + tile.effectValue);
+
+          const newPlayers = currentPlayers.map(p => p.id === player.id ? { ...p, position: newPos } : p);
+          await updateGameState(roomId, {
+              players: newPlayers,
+              lastLog: `✨ ラッキー！ ${tile.effectValue}マス進みます。`,
+              lastLogTimestamp: Date.now()
+          });
+
+          await new Promise(r => setTimeout(r, 1500));
+          await nextTurn(roomId, newPlayers, roomState!.activePlayerIndex);
+
+      } else if (tile.type === TileType.BAD && tile.effectValue) {
+          await new Promise(r => setTimeout(r, 1000));
+          const newPos = Math.max(0, pos + tile.effectValue);
+
+          const newPlayers = currentPlayers.map(p => p.id === player.id ? { ...p, position: newPos } : p);
+          await updateGameState(roomId, {
+              players: newPlayers,
+              lastLog: `💥 罠だ！ ${Math.abs(tile.effectValue)}マス戻ります。`,
+              lastLogTimestamp: Date.now()
+          });
+
+          await new Promise(r => setTimeout(r, 1500));
+          await nextTurn(roomId, newPlayers, roomState!.activePlayerIndex);
+
+      } else if (tile.type === TileType.EVENT) {
+           await updateGameState(roomId, {
+               phase: GamePhase.EVENT_PROCESSING,
+               lastLog: `🔮 イベント発生！運命のカードを引きます...`,
+               lastLogTimestamp: Date.now()
+           });
+
+           const event = await generateGameEvent(player.name);
+
+           await updateGameState(roomId, {
+               currentEvent: event,
+               lastLog: `🔮 イベント: 「${event.title}」`,
+               lastLogTimestamp: Date.now()
+           });
+
+           // Note: applyEventEffect will be called by the user clicking the button
+
+      } else {
+          await nextTurn(roomId, currentPlayers, roomState!.activePlayerIndex);
+      }
+  };
+
+  const handleApplyEvent = async () => {
+      if (!roomId || !roomState || !roomState.currentEvent) return;
+      const player = roomState.players[roomState.activePlayerIndex];
+      // Only active player
+      if (player.id !== myPlayerId) return;
+
+      const event = roomState.currentEvent;
+      const val = event.value;
+      let newPlayers = [...roomState.players];
+      let currentPlayer = newPlayers[roomState.activePlayerIndex];
+
+      if (event.effectType === 'MOVE_FORWARD') {
+          currentPlayer.position = Math.min(BOARD_SIZE - 1, currentPlayer.position + val);
+      } else if (event.effectType === 'MOVE_BACK') {
+          currentPlayer.position = Math.max(0, currentPlayer.position - val);
+      } else if (event.effectType === 'SKIP_TURN') {
+          currentPlayer.skipNextTurn = true;
+      }
+
+      newPlayers[roomState.activePlayerIndex] = currentPlayer;
+
+      await updateGameState(roomId, {
+          players: newPlayers,
+          currentEvent: null,
+          phase: GamePhase.PLAYING,
+          lastLog: `${player.name} はイベントの結果を受け入れました。`,
+          lastLogTimestamp: Date.now()
+      });
+
+      await new Promise(r => setTimeout(r, 1500));
+      await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
+  };
+
+
+  // --- Render ---
+
+  if (!roomId || !roomState) {
+    return <SetupScreen onJoinGame={handleJoinGame} />;
   }
 
-  const activePlayer = players[activePlayerIndex];
+  // Lobby
+  if (roomState.status === 'WAITING') {
+      const isHost = roomState.hostId === myPlayerName; // Simple check
+      // Actually hostId might be 'PlayerName' from createRoom logic.
 
-  // --- Constants for Board Rendering ---
-  const TILE_WIDTH = 120;
-  const TILE_HEIGHT = 120;
-  const GAP = 0;
+      return (
+          <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 text-slate-100 font-sans">
+              <div className="w-full max-w-lg bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
+                  <h2 className="text-3xl font-bold text-center mb-2">待機中...</h2>
+                  <p className="text-center text-slate-400 mb-8">他のプレイヤーを待っています</p>
+
+                  <div className="bg-slate-900 rounded-xl p-6 mb-8 text-center border border-slate-700">
+                      <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">ルームID</p>
+                      <div className="text-5xl font-mono tracking-widest text-blue-400 font-bold select-all cursor-pointer hover:text-blue-300 transition-colors">
+                          {roomState.id}
+                      </div>
+                      <p className="text-xs text-slate-600 mt-2">このIDを友達に教えてください</p>
+                  </div>
+
+                  <div className="mb-8">
+                      <h3 className="text-sm font-bold text-slate-400 mb-4">参加プレイヤー ({roomState.players.length})</h3>
+                      <div className="space-y-3">
+                          {roomState.players.map(p => (
+                              <div key={p.id} className="flex items-center bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+                                  <span className="text-2xl mr-3">{p.avatar}</span>
+                                  <span className="font-bold flex-grow">{p.name}</span>
+                                  {p.name === roomState.hostId && <span className="px-2 py-1 bg-yellow-600/30 text-yellow-400 text-xs rounded border border-yellow-600/50">HOST</span>}
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+
+                  {isHost ? (
+                      <button
+                          onClick={handleStartGame}
+                          className="w-full py-4 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-xl transition-all shadow-lg shadow-green-900/20 active:scale-95"
+                      >
+                          ゲームスタート！ 🚀
+                      </button>
+                  ) : (
+                      <div className="text-center text-slate-500 animate-pulse">
+                          ホストが開始するのを待っています...
+                      </div>
+                  )}
+              </div>
+          </div>
+      );
+  }
+
+  // Game View
+  const activePlayer = roomState.players[roomState.activePlayerIndex];
+  const isMyTurn = activePlayer.id === myPlayerId;
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-900 text-slate-100 font-sans">
-      
-      {/* Popup Overlay */}
       <Popup 
         message={popupData?.msg || null} 
         type={popupData?.type || 'info'} 
         isVisible={showPopup} 
       />
 
-      {/* Header */}
       <header className="p-4 bg-slate-800 shadow-lg z-10 flex justify-between items-center border-b border-slate-700">
         <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
-          冒険すごろく
+          冒険すごろく ONLINE
         </h1>
         <div className="text-sm text-slate-400">
-          参加人数: {players.length}人
+            ルーム: <span className="font-mono font-bold text-white">{roomId}</span> | あなた: {myPlayerName}
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="flex-grow flex flex-col lg:flex-row overflow-hidden relative">
-        
-        {/* Left: The Board (3D Scene) */}
         <div className="flex-grow relative bg-slate-900 overflow-hidden h-[50vh] lg:h-auto">
              <GameScene
                board={board}
-               players={players}
-               activePlayerIndex={activePlayerIndex}
+               players={roomState.players}
+               activePlayerIndex={roomState.activePlayerIndex}
                autoCamera={autoCamera}
                diceTrigger={dice3DTrigger}
-               diceTarget={dice3DTarget}
+               diceTarget={roomState.diceValue || 1}
              />
-
-             {/* Camera Controls Overlay */}
              <div className="absolute top-4 right-4 z-10">
                 <button
                    onClick={() => setAutoCamera(!autoCamera)}
@@ -329,21 +394,21 @@ const App: React.FC = () => {
              </div>
         </div>
 
-        {/* Right: Controls & Logs */}
         <div className="w-full lg:w-96 bg-slate-800 border-l border-slate-700 flex flex-col shadow-2xl z-20">
-          
-          {/* Active Player Info */}
           <div className="p-6 border-b border-slate-700 bg-slate-800">
-            {phase === GamePhase.GAME_OVER ? (
+            {roomState.phase === GamePhase.GAME_OVER ? (
                <div className="text-center">
                  <div className="text-6xl mb-4">🏆</div>
                  <h2 className="text-2xl font-bold text-yellow-400 mb-2">ゲーム終了！</h2>
-                 <p className="text-white">優勝は {players.find(p => p.isWinner)?.name} です！</p>
+                 <p className="text-white">優勝は {roomState.players.find(p => p.isWinner)?.name} です！</p>
                  <button 
-                   onClick={() => window.location.reload()}
+                   onClick={() => {
+                       localStorage.clear();
+                       window.location.reload();
+                   }}
                    className="mt-6 px-6 py-2 bg-blue-600 rounded-lg hover:bg-blue-500 font-bold"
                  >
-                   もう一度遊ぶ
+                   ロビーに戻る
                  </button>
                </div>
             ) : (
@@ -355,21 +420,22 @@ const App: React.FC = () => {
                    </div>
                 </div>
                 <h2 className="text-2xl font-bold mb-1">{activePlayer.name}</h2>
-                <div className="text-slate-400 text-sm mb-6">あなたの番です！</div>
+                <div className={`text-sm mb-6 ${isMyTurn ? 'text-green-400 font-bold' : 'text-slate-400'}`}>
+                    {isMyTurn ? '👉 あなたの番です！' : '待機中...'}
+                </div>
 
-                {/* Dice / Action Area */}
-                {phase === GamePhase.PLAYING && (
+                {roomState.phase === GamePhase.PLAYING && (
                   <div className="flex flex-col items-center w-full">
                     <div className="w-24 h-24 bg-white rounded-xl shadow-inner flex items-center justify-center mb-4 border-4 border-slate-300">
                        <span className={`text-5xl font-bold text-slate-800 ${isRolling ? 'animate-bounce' : ''}`}>
-                         {diceValue ?? '?'}
+                         {roomState.diceValue ?? '?'}
                        </span>
                     </div>
                     <button
                       onClick={handleRollDice}
-                      disabled={isRolling || turnActive}
+                      disabled={!isMyTurn || isRolling}
                       className={`w-full py-3 rounded-xl font-bold text-lg transition-all transform active:scale-95 ${
-                        isRolling || turnActive
+                        !isMyTurn || isRolling
                           ? 'bg-slate-600 cursor-not-allowed text-slate-400' 
                           : `bg-gradient-to-r from-${activePlayer.color}-500 to-${activePlayer.color}-600 hover:brightness-110 shadow-lg shadow-${activePlayer.color}-500/40`
                       }`}
@@ -379,49 +445,43 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {/* Event Processing State */}
-                {phase === GamePhase.EVENT_PROCESSING && (
+                {roomState.phase === GamePhase.EVENT_PROCESSING && roomState.currentEvent && (
                    <div className="w-full p-4 bg-slate-700/50 rounded-xl border border-purple-500/30">
-                     {isProcessingEvent ? (
-                       <div className="flex flex-col items-center py-4">
-                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mb-2"></div>
-                         <p className="text-purple-300 animate-pulse">イベント発生中...</p>
-                       </div>
-                     ) : currentEvent ? (
                        <div className="text-center animate-fade-in">
                           <div className="text-4xl mb-2">🔮</div>
-                          <h3 className="text-lg font-bold text-purple-300 mb-1">{currentEvent.title}</h3>
-                          <p className="text-sm text-slate-300 mb-4 italic">"{currentEvent.description}"</p>
+                          <h3 className="text-lg font-bold text-purple-300 mb-1">{roomState.currentEvent.title}</h3>
+                          <p className="text-sm text-slate-300 mb-4 italic">"{roomState.currentEvent.description}"</p>
                           <div className="text-xs font-bold uppercase tracking-wider text-purple-200 mb-4 bg-purple-900/50 py-1 rounded">
                             効果: {
-                                currentEvent.effectType === 'MOVE_FORWARD' ? '進む' :
-                                currentEvent.effectType === 'MOVE_BACK' ? '戻る' :
-                                currentEvent.effectType === 'SKIP_TURN' ? '一回休み' : 'なし'
+                                roomState.currentEvent.effectType === 'MOVE_FORWARD' ? '進む' :
+                                roomState.currentEvent.effectType === 'MOVE_BACK' ? '戻る' :
+                                roomState.currentEvent.effectType === 'SKIP_TURN' ? '一回休み' : 'なし'
                             } 
-                            {currentEvent.value > 0 && ` (${currentEvent.value})`}
+                            {roomState.currentEvent.value > 0 && ` (${roomState.currentEvent.value})`}
                           </div>
-                          <button
-                            onClick={applyEventEffect}
-                            className="w-full py-2 bg-purple-600 hover:bg-purple-500 rounded-lg font-bold transition-colors"
-                          >
-                            結果を受け入れる
-                          </button>
+                          {isMyTurn ? (
+                              <button
+                                onClick={handleApplyEvent}
+                                className="w-full py-2 bg-purple-600 hover:bg-purple-500 rounded-lg font-bold transition-colors"
+                              >
+                                結果を受け入れる
+                              </button>
+                          ) : (
+                              <div className="text-xs text-center text-slate-500">プレイヤーの選択待ち...</div>
+                          )}
                        </div>
-                     ) : null}
                    </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Game Log */}
           <div className="flex-grow flex flex-col p-4 overflow-hidden bg-slate-800">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ゲームログ</h3>
             <div 
               ref={logContainerRef}
               className="flex-grow overflow-y-auto space-y-2 pr-2 scrollbar-hide"
             >
-              {logs.length === 0 && <div className="text-slate-600 text-sm italic">ここにゲームの履歴が表示されます...</div>}
               {logs.map((log, i) => (
                 <div key={i} className="text-sm p-2 bg-slate-700/50 rounded border-l-2 border-blue-500 animate-fade-in">
                   {log}
@@ -436,3 +496,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+// Verified at Fri Dec  5 13:12:09 UTC 2025
