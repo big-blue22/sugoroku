@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createRoom, joinRoom } from '../services/roomService';
+import { checkFirebaseConfig } from '../services/firebase';
 
 interface SetupScreenProps {
   onJoinGame: (roomId: string, playerId: number, playerName: string) => void;
@@ -14,19 +15,45 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onJoinGame }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Check Config on Mount
+  useEffect(() => {
+    const missing = checkFirebaseConfig();
+    if (missing.length > 0) {
+      setError(`Configuration Missing: ${missing.join(', ')}. Please check GitHub Secrets.`);
+    }
+  }, []);
+
   const avatars = ['🧙‍♂️', '🧝‍♀️', '🧚', '🧞‍♂️', '🧛', '🤖', '🦊', '🐱'];
   const colors = ['blue', 'red', 'green', 'yellow', 'purple', 'pink'];
+
+  const getErrorMessage = (err: any): string => {
+    if (err.code === 'permission-denied') {
+      return "アクセスが拒否されました。Firebase ConsoleのFirestoreルールを「テストモード」に設定してください。";
+    }
+    return "エラーが発生しました: " + (err.message || "不明なエラー");
+  };
 
   const handleCreateRoom = async () => {
     if (!name) return;
     setIsLoading(true);
     setError(null);
+
+    // Timeout Promise
+    const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Connection timed out. Check your network or configuration.")), 10000)
+    );
+
     try {
-      const { roomId, playerId } = await createRoom({ name, avatar, color });
-      onJoinGame(roomId, playerId, name);
+      const result = await Promise.race([
+          createRoom({ name, avatar, color }),
+          timeout
+      ]) as { roomId: string, playerId: number };
+
+      onJoinGame(result.roomId, result.playerId, name);
     } catch (err: any) {
       console.error(err);
-      setError("ルーム作成に失敗しました: " + (err.message || "不明なエラー"));
+      setError(getErrorMessage(err));
+      setMode('INITIAL'); // Go back so user isn't stuck
     } finally {
       setIsLoading(false);
     }
@@ -36,14 +63,23 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onJoinGame }) => {
     if (!name || !roomIdInput) return;
     setIsLoading(true);
     setError(null);
+
+    const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Connection timed out. Check your network or configuration.")), 10000)
+    );
+
     try {
-      const result = await joinRoom(roomIdInput.toUpperCase(), { name, avatar, color });
+      const result = await Promise.race([
+          joinRoom(roomIdInput.toUpperCase(), { name, avatar, color }),
+          timeout
+      ]) as { playerId: number } | null;
+
       if (result) {
          onJoinGame(roomIdInput.toUpperCase(), result.playerId, name);
       }
     } catch (err: any) {
       console.error(err);
-      setError("参加に失敗しました: " + (err.message || "不明なエラー"));
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -56,6 +92,12 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onJoinGame }) => {
             <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
               冒険すごろく ONLINE
             </h1>
+
+            {error && (
+                <div className="bg-red-900/50 text-red-200 p-4 rounded-lg mb-6 border border-red-700 text-sm font-bold">
+                    ⚠️ {error}
+                </div>
+            )}
 
             <div className="space-y-6">
                 <div>
@@ -101,14 +143,14 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onJoinGame }) => {
                 <div className="pt-4 flex gap-4">
                     <button
                         onClick={() => setMode('CREATE')}
-                        disabled={!name}
+                        disabled={!name || !!error} // Disable if config error
                         className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20"
                     >
                         ルーム作成
                     </button>
                     <button
                         onClick={() => setMode('JOIN')}
-                        disabled={!name}
+                        disabled={!name || !!error}
                         className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl font-bold transition-all border border-slate-600"
                     >
                         参加する
