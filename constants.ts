@@ -1,6 +1,7 @@
 import { TileType } from './types';
 
 export const BOARD_SIZE = 30;
+export const GRID_SCALE = 4.0;
 
 export const PLAYER_COLORS = [
   { name: '赤', class: 'red', hex: '#ef4444' },

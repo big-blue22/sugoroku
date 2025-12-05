@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { Tile, Player } from '../../types';
-import { BOARD_COORDINATES } from '../../constants';
+import { BOARD_COORDINATES, GRID_SCALE } from '../../constants';
 import Tile3D from './Tile3D';
 import Terrain from './Terrain';
 import PlayerPawn3D from './PlayerPawn3D';
@@ -16,7 +16,6 @@ interface GameSceneProps {
 }
 
 // Helper to convert grid coords to 3D world coords
-const GRID_SCALE = 2.0;
 const getPosition = (index: number) => {
   const coords = BOARD_COORDINATES[index] || {x: 0, y: 0};
   return {
@@ -25,6 +24,32 @@ const getPosition = (index: number) => {
   };
 };
 
+// Calculate offsets for multiple players on the same tile (Square Formation)
+const getPlayerOffset = (playerIndex: number, allPlayers: Player[], currentPlayerPosIndex: number) => {
+  // Find all players at this position
+  const playersOnTile = allPlayers.filter(p => p.position === currentPlayerPosIndex);
+
+  // If only one player, center them
+  if (playersOnTile.length <= 1) return { x: 0, z: 0 };
+
+  // Sort players by ID to ensure consistent ordering of slots
+  playersOnTile.sort((a, b) => a.id - b.id);
+  const slotIndex = playersOnTile.findIndex(p => p.id === allPlayers[playerIndex].id);
+
+  // Define 4 slots (Top-Left, Top-Right, Bottom-Left, Bottom-Right)
+  // Distance from center
+  const d = 0.6;
+
+  switch (slotIndex) {
+    case 0: return { x: -d, z: -d }; // Top-Left
+    case 1: return { x: d, z: -d };  // Top-Right
+    case 2: return { x: -d, z: d };  // Bottom-Left
+    case 3: return { x: d, z: d };   // Bottom-Right
+    default: return { x: 0, z: 0 };  // Fallback
+  }
+};
+
+
 const CameraController: React.FC<{ target: THREE.Vector3; auto: boolean }> = ({ target, auto }) => {
   const { camera, controls } = useThree();
   const vec = new THREE.Vector3();
@@ -32,7 +57,7 @@ const CameraController: React.FC<{ target: THREE.Vector3; auto: boolean }> = ({ 
   useFrame((state, delta) => {
     if (auto) {
       // Lerp camera position to be offset from target
-      const offset = new THREE.Vector3(0, 8, 10); // High angle view
+      const offset = new THREE.Vector3(0, 16, 20); // Higher and further back for larger grid
       const desiredPos = target.clone().add(offset);
 
       state.camera.position.lerp(desiredPos, delta * 2);
@@ -53,12 +78,16 @@ const GameScene: React.FC<GameSceneProps> = ({ board, players, activePlayerIndex
 
   const activePlayer = players[activePlayerIndex];
   const activePos = getPosition(activePlayer.position);
+  // We need to account for the offset in camera targeting too?
+  // Maybe just target the center of the tile to avoid jitter if they swap slots.
+  // Or targeting the specific player is fine, the offset is small.
+  // Let's target the tile center for stability.
   const targetVec = new THREE.Vector3(activePos.x, 0, activePos.z);
 
   return (
     <div className="w-full h-full absolute inset-0 bg-slate-900">
       <Canvas shadows>
-        <PerspectiveCamera makeDefault position={[6, 10, 15]} fov={50} />
+        <PerspectiveCamera makeDefault position={[12, 20, 30]} fov={50} />
         <OrbitControls makeDefault enableDamping dampingFactor={0.1} maxPolarAngle={Math.PI / 2.1} />
 
         <CameraController target={targetVec} auto={autoCamera} />
@@ -110,14 +139,16 @@ const GameScene: React.FC<GameSceneProps> = ({ board, players, activePlayerIndex
         {/* Players */}
         {players.map((p, i) => {
             const { x, z } = getPosition(p.position);
+            const offset = getPlayerOffset(i, players, p.position);
+
             return (
                 <PlayerPawn3D
                     key={p.id}
                     id={p.id}
                     avatar={p.avatar}
                     color={p.color}
-                    targetX={x}
-                    targetZ={z}
+                    targetX={x + offset.x}
+                    targetZ={z + offset.z}
                     isActive={i === activePlayerIndex}
                 />
             );
