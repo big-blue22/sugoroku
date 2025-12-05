@@ -37,3 +37,18 @@ export interface GameEvent {
   effectType: 'MOVE_FORWARD' | 'MOVE_BACK' | 'SKIP_TURN' | 'NOTHING';
   value: number;
 }
+
+export interface RoomState {
+  id: string;
+  hostId: string;
+  status: 'WAITING' | 'PLAYING';
+  createdAt: number;
+  players: Player[];
+  activePlayerIndex: number;
+  phase: GamePhase;
+  diceValue: number | null;
+  diceRollCount: number;
+  currentEvent: GameEvent | null;
+  lastLog: string | null;
+  lastLogTimestamp: number | null;
+}
