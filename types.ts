@@ -37,3 +37,26 @@ export interface GameEvent {
   effectType: 'MOVE_FORWARD' | 'MOVE_BACK' | 'SKIP_TURN' | 'NOTHING';
   value: number;
 }
+
+// --- Firebase / Multiplayer Types ---
+
+export interface RoomState {
+  id: string; // Room Code (e.g. "ABCD")
+  hostId: string; // ID of the player who created the room (for "Start Game" permission)
+  status: 'WAITING' | 'PLAYING';
+  createdAt: number;
+
+  // Game State (Synced)
+  players: Player[];
+  activePlayerIndex: number;
+  phase: GamePhase;
+
+  // Action Syncing
+  diceValue: number | null;
+  diceRollCount: number; // Increment to trigger animation on clients
+  currentEvent: GameEvent | null;
+
+  // Logs
+  lastLog: string | null; // Latest log message to append
+  lastLogTimestamp: number;
+}
