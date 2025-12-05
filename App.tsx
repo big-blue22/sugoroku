@@ -32,6 +32,8 @@ const App: React.FC = () => {
   // Game State for UI
   const [isRolling, setIsRolling] = useState(false);
   const [diceValue, setDiceValue] = useState<number | null>(null);
+  const [dice3DTrigger, setDice3DTrigger] = useState(0); // Counter to trigger 3D roll
+  const [dice3DTarget, setDice3DTarget] = useState(1);
   const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null);
   const [isProcessingEvent, setIsProcessingEvent] = useState(false);
   const [turnActive, setTurnActive] = useState(false);
@@ -234,25 +236,36 @@ const App: React.FC = () => {
     if (isRolling || turnActive) return;
     setIsRolling(true);
     setTurnActive(true);
-    
-    // Animation simulation
-    let roll = 1;
-    for (let i = 0; i < 10; i++) {
-        roll = Math.floor(Math.random() * 6) + 1;
-        setDiceValue(roll);
+
+    // 1. Determine the result immediately
+    const finalRoll = Math.floor(Math.random() * 6) + 1;
+    setDice3DTarget(finalRoll);
+
+    // 2. Trigger 3D Dice Fall
+    setDice3DTrigger(prev => prev + 1);
+
+    // 3. 2D Shuffle Animation (concurrently)
+    let shuffleRoll = 1;
+    for (let i = 0; i < 12; i++) { // Approx 1 second (12 * 80ms = 960ms)
+        shuffleRoll = Math.floor(Math.random() * 6) + 1;
+        setDiceValue(shuffleRoll);
         await new Promise(r => setTimeout(r, 80));
     }
 
+    // 4. Settle on Final Value
+    setDiceValue(finalRoll);
     setIsRolling(false);
-    addLog(`${players[activePlayerIndex].name} は ${roll} を出した！`);
-    triggerPopup(`🎲 ${roll} が出ました！`, 'info', 1000);
 
-    // Move logic
-    // Wait a brief moment so user sees the dice result popup
-    await new Promise(r => setTimeout(r, 1000));
-    const finalPos = await movePlayer(players[activePlayerIndex].id, roll);
+    addLog(`${players[activePlayerIndex].name} は ${finalRoll} を出した！`);
+    triggerPopup(`🎲 ${finalRoll} が出ました！`, 'info', 1500);
+
+    // 5. Wait for user to see the result (and 3D animation to fully settle/bounce)
+    await new Promise(r => setTimeout(r, 800));
+
+    // 6. Move Logic
+    const finalPos = await movePlayer(players[activePlayerIndex].id, finalRoll);
     
-    // Check effects
+    // 7. Check effects
     setTimeout(() => handleTileEffect(finalPos), 500);
   };
 
@@ -297,6 +310,8 @@ const App: React.FC = () => {
                players={players}
                activePlayerIndex={activePlayerIndex}
                autoCamera={autoCamera}
+               diceTrigger={dice3DTrigger}
+               diceTarget={dice3DTarget}
              />
 
              {/* Camera Controls Overlay */}
