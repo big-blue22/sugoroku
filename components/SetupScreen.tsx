@@ -1,104 +1,178 @@
 import React, { useState } from 'react';
-import { AVATARS, PLAYER_COLORS } from '../constants';
+import { createRoom, joinRoom } from '../services/roomService';
 
 interface SetupScreenProps {
-  onStartGame: (players: { name: string; color: string; avatar: string }[]) => void;
+  onJoinGame: (roomId: string, playerId: number, playerName: string) => void;
 }
 
-const SetupScreen: React.FC<SetupScreenProps> = ({ onStartGame }) => {
-  const [playerCount, setPlayerCount] = useState<number>(2);
-  const [configs, setConfigs] = useState(
-    Array(4).fill(null).map((_, i) => ({
-      name: `プレイヤー ${i + 1}`,
-      color: PLAYER_COLORS[i].class,
-      avatar: AVATARS[i],
-    }))
-  );
+const SetupScreen: React.FC<SetupScreenProps> = ({ onJoinGame }) => {
+  const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState('🧙‍♂️');
+  const [color, setColor] = useState('blue');
+  const [mode, setMode] = useState<'INITIAL' | 'CREATE' | 'JOIN'>('INITIAL');
+  const [roomIdInput, setRoomIdInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleConfigChange = (index: number, field: string, value: string) => {
-    const newConfigs = [...configs];
-    newConfigs[index] = { ...newConfigs[index], [field]: value };
-    setConfigs(newConfigs);
+  const avatars = ['🧙‍♂️', '🧝‍♀️', '🧚', '🧞‍♂️', '🧛', '🤖', '🦊', '🐱'];
+  const colors = ['blue', 'red', 'green', 'yellow', 'purple', 'pink'];
+
+  const handleCreateRoom = async () => {
+    if (!name) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { roomId, playerId } = await createRoom({ name, avatar, color });
+      onJoinGame(roomId, playerId, name);
+    } catch (err: any) {
+      console.error(err);
+      setError("ルーム作成に失敗しました: " + (err.message || "不明なエラー"));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleStart = () => {
-    const activePlayers = configs.slice(0, playerCount);
-    onStartGame(activePlayers);
+  const handleJoinRoom = async () => {
+    if (!name || !roomIdInput) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await joinRoom(roomIdInput.toUpperCase(), { name, avatar, color });
+      if (result) {
+         onJoinGame(roomIdInput.toUpperCase(), result.playerId, name);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError("参加に失敗しました: " + (err.message || "不明なエラー"));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-slate-900 text-white">
-      <div className="max-w-md w-full bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
-        <h1 className="text-4xl font-bold text-center mb-2 bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
-          AI冒険すごろく
-        </h1>
-        <p className="text-slate-400 text-center mb-8 text-sm">Gemini AI ゲームマスターと一緒に冒険へ出かけよう！</p>
+  if (mode === 'INITIAL') {
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-100">
+          <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
+            <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
+              冒険すごろく ONLINE
+            </h1>
 
-        <div className="mb-6">
-          <label className="block text-sm font-bold mb-2 text-slate-300">プレイ人数</label>
-          <div className="flex space-x-2">
-            {[1, 2, 3, 4].map(num => (
-              <button
-                key={num}
-                onClick={() => setPlayerCount(num)}
-                className={`flex-1 py-2 rounded-lg font-bold transition-colors ${
-                  playerCount === num 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' 
-                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                }`}
-              >
-                {num}人
-              </button>
-            ))}
+            <div className="space-y-6">
+                <div>
+                    <label className="block text-sm font-bold text-slate-400 mb-2">名前</label>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        placeholder="あなたの名前"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-bold text-slate-400 mb-2">アバター</label>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        {avatars.map(a => (
+                            <button
+                                key={a}
+                                onClick={() => setAvatar(a)}
+                                className={`text-2xl w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center border-2 transition-all ${avatar === a ? 'border-blue-500 bg-slate-700 scale-110' : 'border-transparent hover:bg-slate-700'}`}
+                            >
+                                {a}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-bold text-slate-400 mb-2">カラー</label>
+                    <div className="flex gap-2">
+                        {colors.map(c => (
+                            <button
+                                key={c}
+                                onClick={() => setColor(c)}
+                                className={`w-8 h-8 rounded-full border-2 transition-all ${color === c ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                                style={{ backgroundColor: c === 'blue' ? '#3b82f6' : c === 'red' ? '#ef4444' : c === 'green' ? '#22c55e' : c === 'yellow' ? '#eab308' : c === 'purple' ? '#a855f7' : '#ec4899' }}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                <div className="pt-4 flex gap-4">
+                    <button
+                        onClick={() => setMode('CREATE')}
+                        disabled={!name}
+                        className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20"
+                    >
+                        ルーム作成
+                    </button>
+                    <button
+                        onClick={() => setMode('JOIN')}
+                        disabled={!name}
+                        className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl font-bold transition-all border border-slate-600"
+                    >
+                        参加する
+                    </button>
+                </div>
+            </div>
           </div>
         </div>
+      );
+  }
 
-        <div className="space-y-4 mb-8">
-          {configs.slice(0, playerCount).map((config, idx) => (
-            <div key={idx} className="flex items-center space-x-3 bg-slate-700/50 p-3 rounded-xl border border-slate-600">
-              <div className="flex-shrink-0">
-                <select 
-                  value={config.avatar}
-                  onChange={(e) => handleConfigChange(idx, 'avatar', e.target.value)}
-                  className="bg-slate-800 border border-slate-600 rounded p-1 text-xl cursor-pointer"
+  if (mode === 'CREATE') {
+      return (
+          <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 text-slate-100">
+             <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700 text-center">
+                 <h2 className="text-xl font-bold mb-4">ルームを作成中...</h2>
+                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                 {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+                 {!isLoading && handleCreateRoom() /* Auto trigger */}
+             </div>
+          </div>
+      )
+  }
+
+  if (mode === 'JOIN') {
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-100">
+          <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
+            <button onClick={() => setMode('INITIAL')} className="text-sm text-slate-400 mb-4 hover:text-white">← 戻る</button>
+            <h2 className="text-2xl font-bold text-center mb-6">ルームに参加</h2>
+
+            <div className="space-y-6">
+                <div>
+                    <label className="block text-sm font-bold text-slate-400 mb-2">ルームID (4文字)</label>
+                    <input
+                        type="text"
+                        value={roomIdInput}
+                        onChange={(e) => setRoomIdInput(e.target.value.toUpperCase())}
+                        maxLength={4}
+                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-center text-2xl tracking-widest font-mono focus:ring-2 focus:ring-green-500 outline-none transition-all uppercase placeholder-slate-700"
+                        placeholder="ABCD"
+                    />
+                </div>
+
+                {error && (
+                    <div className="bg-red-900/30 text-red-400 p-3 rounded text-sm border border-red-900/50">
+                        {error}
+                    </div>
+                )}
+
+                <button
+                    onClick={handleJoinRoom}
+                    disabled={isLoading || roomIdInput.length < 4}
+                    className="w-full py-3 bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl font-bold transition-all shadow-lg shadow-green-900/20"
                 >
-                  {AVATARS.map(a => <option key={a} value={a}>{a}</option>)}
-                </select>
-              </div>
-              <div className="flex-grow">
-                <input
-                  type="text"
-                  value={config.name}
-                  onChange={(e) => handleConfigChange(idx, 'name', e.target.value)}
-                  className="w-full bg-transparent border-b border-slate-500 focus:border-blue-400 outline-none px-1 py-1 text-sm font-medium"
-                  placeholder="名前"
-                />
-              </div>
-              <div className="flex space-x-1">
-                {PLAYER_COLORS.map(color => (
-                  <button
-                    key={color.class}
-                    onClick={() => handleConfigChange(idx, 'color', color.class)}
-                    className={`w-6 h-6 rounded-full border-2 ${
-                      config.color === color.class ? 'border-white scale-110' : 'border-transparent opacity-50'
-                    } bg-${color.class}-500`}
-                    title={color.name}
-                  />
-                ))}
-              </div>
+                    {isLoading ? '参加中...' : 'ルームに入る'}
+                </button>
             </div>
-          ))}
+          </div>
         </div>
+      );
+  }
 
-        <button
-          onClick={handleStart}
-          className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl font-bold text-lg shadow-xl shadow-blue-900/50 transition-all transform hover:scale-[1.02]"
-        >
-          冒険を始める
-        </button>
-      </div>
-    </div>
-  );
+  return null;
 };
 
 export default SetupScreen;
