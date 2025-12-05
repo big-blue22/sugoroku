@@ -7,12 +7,15 @@ import { BOARD_COORDINATES, GRID_SCALE } from '../../constants';
 import Tile3D from './Tile3D';
 import Terrain from './Terrain';
 import PlayerPawn3D from './PlayerPawn3D';
+import { Die3D } from './Die3D';
 
 interface GameSceneProps {
   board: Tile[];
   players: Player[];
   activePlayerIndex: number;
   autoCamera: boolean;
+  diceTrigger?: number;
+  diceTarget?: number;
 }
 
 // Helper to convert grid coords to 3D world coords
@@ -74,7 +77,14 @@ const CameraController: React.FC<{ target: THREE.Vector3; auto: boolean }> = ({ 
   return null;
 };
 
-const GameScene: React.FC<GameSceneProps> = ({ board, players, activePlayerIndex, autoCamera }) => {
+const GameScene: React.FC<GameSceneProps> = ({
+  board,
+  players,
+  activePlayerIndex,
+  autoCamera,
+  diceTrigger = 0,
+  diceTarget = 1
+}) => {
 
   const activePlayer = players[activePlayerIndex];
   const activePos = getPosition(activePlayer.position);
@@ -153,6 +163,14 @@ const GameScene: React.FC<GameSceneProps> = ({ board, players, activePlayerIndex
                 />
             );
         })}
+
+        {/* 3D Die */}
+        {/* We place it slightly offset from the active player so it doesn't land ON them */}
+        <Die3D
+           trigger={diceTrigger}
+           targetValue={diceTarget}
+           position={[activePos.x + 2, 0, activePos.z + 2]} // Offset by 2 units
+        />
 
       </Canvas>
     </div>
