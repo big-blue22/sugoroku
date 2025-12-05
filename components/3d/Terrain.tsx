@@ -32,7 +32,7 @@ const Terrain: React.FC = () => {
 
        {/* Zone 2: Sand (Middle rows) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 1]} receiveShadow>
-        <planeGeometry args={[30, 6]} />
+        <planeGeometry args={[30, 4]} />
         <meshStandardMaterial color="#fcd34d" />
       </mesh>
 
