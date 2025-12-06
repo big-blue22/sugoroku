@@ -1,0 +1,17 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ルームコレクションへのアクセス許可
+    match /rooms/{roomId} {
+      // 誰でも読み書き可能（開発・テスト用）
+      // 本番環境では認証を追加することを推奨
+      allow read, write: if true;
+    }
+    
+    // その他のコレクションはデフォルトで拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
