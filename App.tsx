@@ -167,9 +167,10 @@ const App: React.FC = () => {
           lastLogTimestamp: Date.now()
       });
 
-      // Wait for movement animation (approx 0.5s per tile? No, hopping is fast. Fixed time?)
-      // Let's wait 1.5s
-      await new Promise(r => setTimeout(r, 1500));
+      // Dynamic wait time based on distance (500ms per tile + buffer)
+      const dist = Math.abs(targetPos - currentPos);
+      const waitTime = (dist * 500) + 500;
+      await new Promise(r => setTimeout(r, waitTime));
 
       // Handle Effects
       await handleTileEffect(targetPos, activePlayer, updatedPlayers);
@@ -202,7 +203,9 @@ const App: React.FC = () => {
               lastLogTimestamp: Date.now()
           });
 
-          await new Promise(r => setTimeout(r, 1500));
+          const dist = Math.abs(newPos - pos);
+          const waitTime = (dist * 500) + 500;
+          await new Promise(r => setTimeout(r, waitTime));
           await nextTurn(roomId, newPlayers, roomState!.activePlayerIndex);
 
       } else if (tile.type === TileType.BAD && tile.effectValue) {
@@ -216,7 +219,9 @@ const App: React.FC = () => {
               lastLogTimestamp: Date.now()
           });
 
-          await new Promise(r => setTimeout(r, 1500));
+          const dist = Math.abs(newPos - pos);
+          const waitTime = (dist * 500) + 500;
+          await new Promise(r => setTimeout(r, waitTime));
           await nextTurn(roomId, newPlayers, roomState!.activePlayerIndex);
 
       } else if (tile.type === TileType.EVENT) {
@@ -252,6 +257,9 @@ const App: React.FC = () => {
       let newPlayers = [...roomState.players];
       let currentPlayer = newPlayers[roomState.activePlayerIndex];
 
+      // Store original pos to calc distance
+      const originalPos = currentPlayer.position;
+
       if (event.effectType === 'MOVE_FORWARD') {
           currentPlayer.position = Math.min(BOARD_SIZE - 1, currentPlayer.position + val);
       } else if (event.effectType === 'MOVE_BACK') {
@@ -270,7 +278,15 @@ const App: React.FC = () => {
           lastLogTimestamp: Date.now()
       });
 
-      await new Promise(r => setTimeout(r, 1500));
+      // Dynamic wait if moved
+      if (event.effectType === 'MOVE_FORWARD' || event.effectType === 'MOVE_BACK') {
+           const dist = Math.abs(currentPlayer.position - originalPos);
+           const waitTime = (dist * 500) + 500;
+           await new Promise(r => setTimeout(r, waitTime));
+      } else {
+           await new Promise(r => setTimeout(r, 1500));
+      }
+
       await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
   };
 
