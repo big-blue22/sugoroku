@@ -148,7 +148,6 @@ const GameScene: React.FC<GameSceneProps> = ({
 
         {/* Players */}
         {players.map((p, i) => {
-            const { x, z } = getPosition(p.position);
             const offset = getPlayerOffset(i, players, p.position);
 
             return (
@@ -157,8 +156,8 @@ const GameScene: React.FC<GameSceneProps> = ({
                     id={p.id}
                     avatar={p.avatar}
                     color={p.color}
-                    targetX={x + offset.x}
-                    targetZ={z + offset.z}
+                    targetIndex={p.position}
+                    offset={offset}
                     isActive={i === activePlayerIndex}
                 />
             );
