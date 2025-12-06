@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Vector3, Group } from 'three';
@@ -22,8 +22,11 @@ const getPosition = (index: number) => {
   };
 };
 
-const PlayerPawn3D: React.FC<PlayerPawn3DProps> = ({ id, avatar, color, targetIndex, offset, isActive }) => {
+const PlayerPawn3D = forwardRef<Group, PlayerPawn3DProps>(({ id, avatar, color, targetIndex, offset, isActive }, ref) => {
   const groupRef = useRef<Group>(null);
+
+  // Expose groupRef to parent
+  useImperativeHandle(ref, () => groupRef.current!);
 
   // Track where we are visually (index) without triggering re-renders
   const visualIndexRef = useRef(targetIndex);
@@ -181,6 +184,6 @@ const PlayerPawn3D: React.FC<PlayerPawn3DProps> = ({ id, avatar, color, targetIn
       </Html>
     </group>
   );
-};
+});
 
 export default PlayerPawn3D;

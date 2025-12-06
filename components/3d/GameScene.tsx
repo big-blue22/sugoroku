@@ -53,23 +53,37 @@ const getPlayerOffset = (playerIndex: number, allPlayers: Player[], currentPlaye
 };
 
 
-const CameraController: React.FC<{ target: THREE.Vector3; auto: boolean }> = ({ target, auto }) => {
+const CameraController: React.FC<{
+  playerRefs: React.MutableRefObject<(THREE.Group | null)[]>;
+  activePlayerIndex: number;
+  auto: boolean
+}> = ({ playerRefs, activePlayerIndex, auto }) => {
   const { camera, controls } = useThree();
   const vec = new THREE.Vector3();
 
   useFrame((state, delta) => {
     if (auto) {
+      // Find the active player's mesh
+      const activeGroup = playerRefs.current[activePlayerIndex];
+
+      let targetPos = new THREE.Vector3(0, 0, 0);
+
+      if (activeGroup) {
+          // Use the current visual position of the pawn
+          // Ignore Y (jump) to prevent motion sickness, stick to ground level Y=0
+          targetPos.set(activeGroup.position.x, 0, activeGroup.position.z);
+      }
+
       // Lerp camera position to be offset from target
       const offset = new THREE.Vector3(0, 16, 20); // Higher and further back for larger grid
-      const desiredPos = target.clone().add(offset);
+      const desiredPos = targetPos.clone().add(offset);
 
       state.camera.position.lerp(desiredPos, delta * 2);
-      // Look at target
-      // We can't use lookAt directly every frame if we use OrbitControls because OrbitControls fights it.
-      // But if we update OrbitControls target, it works.
+
+      // Update OrbitControls target
       const orbitControls = (state.controls as any);
       if (orbitControls) {
-          orbitControls.target.lerp(target, delta * 2);
+          orbitControls.target.lerp(targetPos, delta * 2);
           orbitControls.update();
       }
     }
@@ -88,11 +102,9 @@ const GameScene: React.FC<GameSceneProps> = ({
 
   const activePlayer = players[activePlayerIndex];
   const activePos = getPosition(activePlayer.position);
-  // We need to account for the offset in camera targeting too?
-  // Maybe just target the center of the tile to avoid jitter if they swap slots.
-  // Or targeting the specific player is fine, the offset is small.
-  // Let's target the tile center for stability.
-  const targetVec = new THREE.Vector3(activePos.x, 0, activePos.z);
+
+  // Refs to track player meshes
+  const playerRefs = useRef<(THREE.Group | null)[]>([]);
 
   return (
     <div className="w-full h-full absolute inset-0 bg-slate-900">
@@ -100,7 +112,11 @@ const GameScene: React.FC<GameSceneProps> = ({
         <PerspectiveCamera makeDefault position={[12, 20, 30]} fov={50} />
         <OrbitControls makeDefault enableDamping dampingFactor={0.1} maxPolarAngle={Math.PI / 2.1} />
 
-        <CameraController target={targetVec} auto={autoCamera} />
+        <CameraController
+            playerRefs={playerRefs}
+            activePlayerIndex={activePlayerIndex}
+            auto={autoCamera}
+        />
 
         <ambientLight intensity={0.6} />
         <directionalLight
@@ -153,6 +169,7 @@ const GameScene: React.FC<GameSceneProps> = ({
             return (
                 <PlayerPawn3D
                     key={p.id}
+                    ref={(el) => (playerRefs.current[i] = el)}
                     id={p.id}
                     avatar={p.avatar}
                     color={p.color}
