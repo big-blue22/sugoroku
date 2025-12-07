@@ -14,11 +14,6 @@ import { BOARD_LAYOUT } from '../constants';
 
 const ROOMS_COLLECTION = 'rooms';
 
-// Returns a Date object for 1 hour from now
-const getExpirationTime = () => {
-  return new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-};
-
 // Generate a random 4-character room code
 const generateRoomId = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -53,8 +48,7 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
     diceRollCount: 0,
     currentEvent: null,
     lastLog: `🏁 ルーム ${roomId} が作成されました！`,
-    lastLogTimestamp: Date.now(),
-    expiresAt: getExpirationTime()
+    lastLogTimestamp: Date.now()
   };
 
   // Create the room document
@@ -97,8 +91,7 @@ export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' |
   await updateDoc(roomRef, {
     players: updatedPlayers,
     lastLog: `👋 ${newPlayer.name} が参加しました！`,
-    lastLogTimestamp: Date.now(),
-    expiresAt: getExpirationTime()
+    lastLogTimestamp: Date.now()
   });
 
   return { playerId: newPlayerId };
@@ -118,18 +111,13 @@ export const startGame = async (roomId: string) => {
     status: 'PLAYING',
     phase: GamePhase.PLAYING,
     lastLog: "🏁 ゲーム開始！冒険の始まりです！",
-    lastLogTimestamp: Date.now(),
-    expiresAt: getExpirationTime()
+    lastLogTimestamp: Date.now()
   });
 };
 
 export const updateGameState = async (roomId: string, updates: Partial<RoomState>) => {
   const roomRef = doc(db, ROOMS_COLLECTION, roomId);
-  const updatesWithExpiration = {
-    ...updates,
-    expiresAt: getExpirationTime()
-  };
-  await updateDoc(roomRef, updatesWithExpiration);
+  await updateDoc(roomRef, updates);
 };
 
 // Helper for "Next Turn" logic (call from Active Player client)
@@ -145,8 +133,7 @@ export const nextTurn = async (roomId: string, currentPlayers: Player[], activeI
     updates = {
         players: updatedPlayers,
         lastLog: `🚫 ${nextPlayer.name} は休みです。`,
-        lastLogTimestamp: Date.now(),
-        expiresAt: getExpirationTime()
+        lastLogTimestamp: Date.now()
     };
 
     // Recursive or multi-step?
@@ -166,8 +153,7 @@ export const nextTurn = async (roomId: string, currentPlayers: Player[], activeI
         activePlayerIndex: actualNextIndex,
         diceValue: null,
         lastLog: `🚫 ${nextPlayer.name} は休みです。次は ${currentPlayers[actualNextIndex].name} の番です。`,
-        lastLogTimestamp: Date.now(),
-        expiresAt: getExpirationTime()
+        lastLogTimestamp: Date.now()
     };
 
   } else {
@@ -175,8 +161,7 @@ export const nextTurn = async (roomId: string, currentPlayers: Player[], activeI
         activePlayerIndex: nextIndex,
         diceValue: null,
         lastLog: `👉 ${nextPlayer.name} のターンです。`,
-        lastLogTimestamp: Date.now(),
-        expiresAt: getExpirationTime()
+        lastLogTimestamp: Date.now()
     };
   }
 

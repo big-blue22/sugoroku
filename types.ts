@@ -59,9 +59,4 @@ export interface RoomState {
   // Logs
   lastLog: string | null; // Latest log message to append
   lastLogTimestamp: number;
-
-  // Firestore TTL (Time-to-Live)
-  // This field is used by Firestore to automatically delete the room after a certain time.
-  // It is updated on every room operation (create, join, move, etc.) to extend the life.
-  expiresAt?: any; // Using 'any' to handle Date (write) vs Timestamp (read)
 }
