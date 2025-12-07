@@ -7,12 +7,44 @@ import {
   updateDoc,
   onSnapshot,
   arrayUnion,
-  serverTimestamp
+  serverTimestamp,
+  query,
+  where,
+  limit,
+  getDocs,
+  writeBatch
 } from 'firebase/firestore';
 import { RoomState, Player, GamePhase, GameEvent } from '../types';
 import { BOARD_LAYOUT } from '../constants';
 
 const ROOMS_COLLECTION = 'rooms';
+const ROOM_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+const cleanupExpiredRooms = async () => {
+  try {
+    const cutoff = Date.now() - ROOM_TTL_MS;
+    const roomsRef = collection(db, ROOMS_COLLECTION);
+    // Limit to 400 to respect Firestore batch limit of 500
+    const q = query(roomsRef, where("createdAt", "<", cutoff), limit(400));
+
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      return;
+    }
+
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+    console.log(`Cleaned up ${snapshot.size} expired rooms.`);
+  } catch (error) {
+    console.error("Failed to cleanup expired rooms:", error);
+    // Suppress error so it doesn't break room creation
+  }
+};
 
 // Generate a random 4-character room code
 const generateRoomId = () => {
@@ -25,6 +57,9 @@ const generateRoomId = () => {
 };
 
 export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position' | 'skipNextTurn' | 'isWinner'>): Promise<{ roomId: string, playerId: number }> => {
+  // Trigger cleanup asynchronously
+  cleanupExpiredRooms();
+
   const roomId = generateRoomId();
   const playerId = 0; // Host is always ID 0
 
