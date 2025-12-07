@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { GamePhase, Player, Tile, TileType, RoomState } from './types';
 import SetupScreen from './components/SetupScreen';
 import Popup, { PopupType } from './components/Popup';
@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [popupData, setPopupData] = useState<{ msg: string; type: PopupType } | null>(null);
   const [autoCamera, setAutoCamera] = useState(true);
   const [isRolling, setIsRolling] = useState(false);
+  const [showInfoPanel, setShowInfoPanel] = useState(false);
 
   // Derived State (local caching of animations)
   const [localDiceValue, setLocalDiceValue] = useState<number | null>(null);
@@ -57,8 +58,6 @@ const App: React.FC = () => {
   // Handle Logs Sync
   useEffect(() => {
       if (roomState?.lastLog && roomState.lastLogTimestamp) {
-          // Prevent duplicates by checking if the last log in our array matches (simple check)
-          // A timestamp check is better but for now string check is ok if messages are unique enough or we just append.
           setLogs(prev => {
              const lastMsg = prev[prev.length - 1];
              if (lastMsg !== roomState.lastLog) {
@@ -74,7 +73,7 @@ const App: React.FC = () => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, [logs, showInfoPanel]);
 
   // Handle Dice Animation Trigger
   useEffect(() => {
@@ -84,7 +83,11 @@ const App: React.FC = () => {
           setIsRolling(true); // Visual indicator start
 
           // Stop rolling visual after a moment
-          setTimeout(() => setIsRolling(false), 2000);
+          setTimeout(() => {
+              setIsRolling(false);
+              // Trigger Popup for everyone
+              triggerPopup(`${roomState.diceValue} が出ました！`, 'info', 3000);
+          }, 2000);
       }
   }, [roomState?.diceRollCount, roomState?.diceValue]);
 
@@ -100,8 +103,6 @@ const App: React.FC = () => {
   // --- Helper Functions ---
 
   const addLog = (msg: string) => {
-      // Local log fallback, mainly for debug
-      // In multiplayer, we rely on roomState.lastLog usually.
       console.log(msg);
   };
 
@@ -138,7 +139,6 @@ const App: React.FC = () => {
       const roll = Math.floor(Math.random() * 6) + 1;
 
       // Update DB with Dice Roll
-      // We don't move yet. We just show the roll.
       await updateGameState(roomId, {
           diceValue: roll,
           diceRollCount: (roomState.diceRollCount || 0) + 1,
@@ -156,7 +156,7 @@ const App: React.FC = () => {
       if (targetPos >= BOARD_SIZE - 1) targetPos = BOARD_SIZE - 1;
       if (targetPos <= 0) targetPos = 0; // Should not happen on fwd roll
 
-      // Update Player Position in DB (Triggers movement animation on all clients)
+      // Update Player Position in DB
       const updatedPlayers = roomState.players.map(p =>
           p.id === activePlayer.id ? { ...p, position: targetPos } : p
       );
@@ -167,7 +167,7 @@ const App: React.FC = () => {
           lastLogTimestamp: Date.now()
       });
 
-      // Dynamic wait time based on distance (500ms per tile + buffer)
+      // Dynamic wait time based on distance
       const dist = Math.abs(targetPos - currentPos);
       const waitTime = (dist * 500) + 500;
       await new Promise(r => setTimeout(r, waitTime));
@@ -192,7 +192,6 @@ const App: React.FC = () => {
       }
 
       if (tile.type === TileType.GOOD && tile.effectValue) {
-          // Move again
           await new Promise(r => setTimeout(r, 1000));
           const newPos = Math.min(BOARD_SIZE - 1, pos + tile.effectValue);
 
@@ -238,8 +237,6 @@ const App: React.FC = () => {
                lastLog: `🔮 イベント: 「${event.title}」`,
                lastLogTimestamp: Date.now()
            });
-
-           // Note: applyEventEffect will be called by the user clicking the button
 
       } else {
           await nextTurn(roomId, currentPlayers, roomState!.activePlayerIndex);
@@ -299,8 +296,7 @@ const App: React.FC = () => {
 
   // Lobby
   if (roomState.status === 'WAITING') {
-      const isHost = roomState.hostId === myPlayerName; // Simple check
-      // Actually hostId might be 'PlayerName' from createRoom logic.
+      const isHost = roomState.hostId === myPlayerName;
 
       return (
           <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 text-slate-100 font-sans">
@@ -351,140 +347,216 @@ const App: React.FC = () => {
   const isMyTurn = activePlayer.id === myPlayerId;
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-900 text-slate-100 font-sans">
+    <div className="relative w-screen h-screen overflow-hidden bg-slate-900 text-slate-100 font-sans">
       <Popup 
         message={popupData?.msg || null} 
         type={popupData?.type || 'info'} 
         isVisible={showPopup} 
       />
 
-      <header className="p-4 bg-slate-800 shadow-lg z-10 flex justify-between items-center border-b border-slate-700">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
-          冒険すごろく ONLINE
-        </h1>
-        <div className="text-sm text-slate-400">
-            ルーム: <span className="font-mono font-bold text-white">{roomId}</span> | あなた: {myPlayerName}
-        </div>
-      </header>
+      {/* --- Game Scene (Background) --- */}
+      <div className="absolute inset-0 z-0">
+         <GameScene
+           board={board}
+           players={roomState.players}
+           activePlayerIndex={roomState.activePlayerIndex}
+           autoCamera={autoCamera}
+           diceTrigger={dice3DTrigger}
+           diceTarget={roomState.diceValue || 1}
+         />
+      </div>
 
-      <main className="flex-grow flex flex-col lg:flex-row overflow-hidden relative">
-        <div className="flex-grow relative bg-slate-900 overflow-hidden h-[50vh] lg:h-auto">
-             <GameScene
-               board={board}
-               players={roomState.players}
-               activePlayerIndex={roomState.activePlayerIndex}
-               autoCamera={autoCamera}
-               diceTrigger={dice3DTrigger}
-               diceTarget={roomState.diceValue || 1}
-             />
-             <div className="absolute top-4 right-4 z-10">
-                <button
-                   onClick={() => setAutoCamera(!autoCamera)}
-                   className={`px-3 py-1 text-xs rounded-full font-bold shadow-lg transition-colors ${
-                       autoCamera
-                       ? 'bg-blue-600 text-white hover:bg-blue-500'
-                       : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                   }`}
-                >
-                   {autoCamera ? '🎥 自動追従 ON' : '🎥 自動追従 OFF'}
-                </button>
+      {/* --- HUD: Top Left Room Info --- */}
+      <div className="absolute top-4 left-4 z-10 flex items-center gap-3 animate-fade-in">
+         <div className="bg-slate-800/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-600 shadow-xl flex items-center gap-3">
+            <span className="text-xs text-slate-400">ID: <span className="font-mono font-bold text-blue-300 text-sm">{roomId}</span></span>
+            <span className="w-px h-4 bg-slate-600"></span>
+            <div className="flex items-center gap-2">
+                <span className="text-lg">{roomState.players.find(p => p.id === myPlayerId)?.avatar}</span>
+                <span className="text-sm font-bold truncate max-w-[120px]">{myPlayerName}</span>
+            </div>
+         </div>
+      </div>
+
+      {/* --- HUD: Top Right Menu Button --- */}
+      <button
+        onClick={() => setShowInfoPanel(!showInfoPanel)}
+        className="absolute top-4 right-4 z-50 p-3 bg-slate-800/80 hover:bg-slate-700/80 backdrop-blur-md rounded-full border border-slate-600 shadow-xl transition-all active:scale-95 text-xl"
+      >
+        {showInfoPanel ? '✖' : '☰'}
+      </button>
+
+      {/* --- HUD: Auto Camera Button (Bottom Left) --- */}
+      <div className="absolute bottom-6 left-6 z-10">
+        <button
+            onClick={() => setAutoCamera(!autoCamera)}
+            className={`px-4 py-2 rounded-full font-bold shadow-xl transition-all border ${
+                autoCamera
+                ? 'bg-blue-600/90 text-white border-blue-400 hover:bg-blue-500'
+                : 'bg-slate-800/90 text-slate-300 border-slate-600 hover:bg-slate-700'
+            }`}
+        >
+            {autoCamera ? '🎥 自動追従 ON' : '🎥 自動追従 OFF'}
+        </button>
+      </div>
+
+      {/* --- Action Area (Bottom Center) --- */}
+      <div className="absolute bottom-8 left-0 w-full z-20 flex flex-col items-center justify-end pointer-events-none px-4">
+
+         {/* Active Player Indicator (When it's NOT my turn) */}
+         {roomState.phase === GamePhase.PLAYING && !isMyTurn && (
+             <div className="mb-4 bg-slate-800/80 backdrop-blur px-6 py-3 rounded-2xl border border-slate-600 shadow-xl flex items-center gap-3 animate-bounce-slight">
+                 <span className="text-3xl">{activePlayer.avatar}</span>
+                 <div>
+                     <p className="text-xs text-slate-400 font-bold uppercase">現在のターン</p>
+                     <p className="text-lg font-bold">{activePlayer.name} が考え中...</p>
+                 </div>
              </div>
-        </div>
+         )}
 
-        <div className="w-full lg:w-96 bg-slate-800 border-l border-slate-700 flex flex-col shadow-2xl z-20">
-          <div className="p-6 border-b border-slate-700 bg-slate-800">
-            {roomState.phase === GamePhase.GAME_OVER ? (
-               <div className="text-center">
-                 <div className="text-6xl mb-4">🏆</div>
-                 <h2 className="text-2xl font-bold text-yellow-400 mb-2">ゲーム終了！</h2>
-                 <p className="text-white">優勝は {roomState.players.find(p => p.isWinner)?.name} です！</p>
-                 <button 
+         {/* Roll Dice Button (When it IS my turn) */}
+         {roomState.phase === GamePhase.PLAYING && isMyTurn && !isRolling && (
+             <button
+                onClick={handleRollDice}
+                className="pointer-events-auto bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white text-xl font-bold py-4 px-12 rounded-2xl shadow-2xl shadow-blue-900/50 transform transition-all active:scale-95 hover:-translate-y-1 border-2 border-white/20"
+             >
+                🎲 サイコロを振る
+             </button>
+         )}
+
+         {/* Rolling Indicator */}
+         {isRolling && (
+             <div className="mb-8 bg-slate-800/80 backdrop-blur px-8 py-4 rounded-xl border border-blue-500/50 shadow-xl text-center">
+                 <div className="text-4xl animate-spin mb-2">🎲</div>
+                 <p className="font-bold text-blue-300">運命のダイスロール...</p>
+             </div>
+         )}
+
+         {/* Event Processing Action */}
+         {roomState.phase === GamePhase.EVENT_PROCESSING && roomState.currentEvent && (
+             <div className="pointer-events-auto w-full max-w-lg bg-slate-800/95 backdrop-blur-xl p-6 rounded-2xl border border-purple-500 shadow-2xl animate-slide-up relative overflow-hidden">
+                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
+                 <div className="text-center">
+                    <div className="text-5xl mb-3">🔮</div>
+                    <h3 className="text-xl font-bold text-purple-200 mb-1">{roomState.currentEvent.title}</h3>
+                    <p className="text-slate-300 mb-6 italic">"{roomState.currentEvent.description}"</p>
+
+                    <div className="inline-block px-3 py-1 bg-purple-900/50 rounded border border-purple-500/30 text-xs font-bold text-purple-300 mb-6 uppercase tracking-wider">
+                        効果: {
+                            roomState.currentEvent.effectType === 'MOVE_FORWARD' ? '進む' :
+                            roomState.currentEvent.effectType === 'MOVE_BACK' ? '戻る' :
+                            roomState.currentEvent.effectType === 'SKIP_TURN' ? '一回休み' : 'なし'
+                        }
+                        {roomState.currentEvent.value > 0 && ` (${roomState.currentEvent.value})`}
+                    </div>
+
+                    {isMyTurn ? (
+                        <button
+                            onClick={handleApplyEvent}
+                            className="w-full py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95"
+                        >
+                            結果を受け入れる
+                        </button>
+                    ) : (
+                        <div className="text-center text-slate-500 animate-pulse bg-slate-900/50 py-2 rounded-lg">
+                            {activePlayer.name} の選択を待っています...
+                        </div>
+                    )}
+                 </div>
+             </div>
+         )}
+      </div>
+
+      {/* --- Info Panel (Slide-over) --- */}
+      <div
+        className={`fixed z-40 bg-slate-900/95 backdrop-blur-xl shadow-2xl border-slate-700 flex flex-col transition-transform duration-300 ease-out
+            lg:top-0 lg:right-0 lg:h-full lg:w-96 lg:border-l lg:translate-y-0
+            inset-x-0 bottom-0 h-[70vh] rounded-t-2xl border-t
+            ${showInfoPanel ? 'translate-y-0 lg:translate-x-0' : 'translate-y-full lg:translate-x-full lg:translate-y-0'}
+        `}
+      >
+          <div className="p-6 border-b border-slate-700 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-slate-200">ゲーム情報</h2>
+              <button onClick={() => setShowInfoPanel(false)} className="lg:hidden text-slate-400 p-2">
+                  ⬇ 閉じる
+              </button>
+          </div>
+
+          <div className="flex-grow overflow-y-auto p-4 space-y-6">
+              {/* Player List */}
+              <div>
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">プレイヤー</h3>
+                  <div className="space-y-2">
+                      {roomState.players.map(p => (
+                          <div key={p.id} className={`flex items-center p-3 rounded-lg border transition-colors ${
+                              p.id === roomState.activePlayerIndex
+                              ? `bg-slate-800 border-${p.color}-500/50 shadow-md`
+                              : 'bg-slate-800/50 border-slate-700'
+                          }`}>
+                              <span className="text-2xl mr-3">{p.avatar}</span>
+                              <div className="flex-grow">
+                                  <div className="flex items-center justify-between">
+                                      <span className={`font-bold ${p.id === myPlayerId ? 'text-blue-300' : 'text-slate-300'}`}>
+                                          {p.name} {p.id === myPlayerId && '(あなた)'}
+                                      </span>
+                                      {p.id === roomState.activePlayerIndex && (
+                                          <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] font-bold rounded border border-green-500/30">TURN</span>
+                                      )}
+                                  </div>
+                                  <div className="text-xs text-slate-500 flex items-center gap-2 mt-1">
+                                      <span>現在地: {p.position}</span>
+                                      {p.skipNextTurn && <span className="text-red-400">⚠ 休み</span>}
+                                  </div>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+
+              {/* Game Log */}
+              <div className="flex flex-col h-64">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex justify-between items-center">
+                      ログ
+                      <span className="bg-slate-700 text-slate-400 px-2 py-0.5 rounded text-[10px]">{logs.length}</span>
+                  </h3>
+                  <div
+                    ref={logContainerRef}
+                    className="flex-grow overflow-y-auto space-y-2 pr-2 bg-slate-800/50 rounded-lg p-2 border border-slate-700/50"
+                  >
+                      {logs.length === 0 && (
+                          <div className="text-center text-slate-600 text-sm py-4">まだ履歴はありません</div>
+                      )}
+                      {logs.map((log, i) => (
+                          <div key={i} className="text-xs p-2 bg-slate-700/30 rounded border-l-2 border-blue-500/50 text-slate-300 leading-relaxed">
+                              {log}
+                          </div>
+                      ))}
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      {/* --- Game Over Modal --- */}
+      {roomState.phase === GamePhase.GAME_OVER && (
+          <div className="absolute inset-0 z-50 bg-slate-900/90 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+             <div className="bg-slate-800 p-10 rounded-3xl shadow-2xl border border-yellow-500/30 text-center max-w-lg w-full relative overflow-hidden">
+                 <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent pointer-events-none"></div>
+                 <div className="text-7xl mb-6 animate-bounce">🏆</div>
+                 <h2 className="text-3xl font-bold text-yellow-400 mb-2">ゲーム終了！</h2>
+                 <div className="py-8">
+                     <p className="text-slate-400 text-sm uppercase tracking-widest mb-2">WINNER</p>
+                     <p className="text-4xl font-bold text-white mb-2">{roomState.players.find(p => p.isWinner)?.name}</p>
+                     <p className="text-slate-400">おめでとうございます！</p>
+                 </div>
+                 <button
                    onClick={() => window.location.reload()}
-                   className="mt-6 px-6 py-2 bg-blue-600 rounded-lg hover:bg-blue-500 font-bold"
+                   className="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95"
                  >
                    ロビーに戻る
                  </button>
-               </div>
-            ) : (
-              <div className="flex flex-col items-center">
-                <div className={`w-20 h-20 rounded-full border-4 border-white bg-${activePlayer.color}-500 flex items-center justify-center text-4xl shadow-lg mb-3 relative`}>
-                   {activePlayer.avatar}
-                   <div className="absolute -bottom-2 px-2 py-0.5 bg-white text-slate-900 text-xs font-bold rounded-full whitespace-nowrap">
-                     現在地: {activePlayer.position}
-                   </div>
-                </div>
-                <h2 className="text-2xl font-bold mb-1">{activePlayer.name}</h2>
-                <div className={`text-sm mb-6 ${isMyTurn ? 'text-green-400 font-bold' : 'text-slate-400'}`}>
-                    {isMyTurn ? '👉 あなたの番です！' : '待機中...'}
-                </div>
-
-                {roomState.phase === GamePhase.PLAYING && (
-                  <div className="flex flex-col items-center w-full">
-                    <div className="w-24 h-24 bg-white rounded-xl shadow-inner flex items-center justify-center mb-4 border-4 border-slate-300">
-                       <span className={`text-5xl font-bold text-slate-800 ${isRolling ? 'animate-bounce' : ''}`}>
-                         {roomState.diceValue ?? '?'}
-                       </span>
-                    </div>
-                    <button
-                      onClick={handleRollDice}
-                      disabled={!isMyTurn || isRolling}
-                      className={`w-full py-3 rounded-xl font-bold text-lg transition-all transform active:scale-95 ${
-                        !isMyTurn || isRolling
-                          ? 'bg-slate-600 cursor-not-allowed text-slate-400' 
-                          : `bg-gradient-to-r from-${activePlayer.color}-500 to-${activePlayer.color}-600 hover:brightness-110 shadow-lg shadow-${activePlayer.color}-500/40`
-                      }`}
-                    >
-                      {isRolling ? 'コロコロ...' : 'サイコロを振る 🎲'}
-                    </button>
-                  </div>
-                )}
-
-                {roomState.phase === GamePhase.EVENT_PROCESSING && roomState.currentEvent && (
-                   <div className="w-full p-4 bg-slate-700/50 rounded-xl border border-purple-500/30">
-                       <div className="text-center animate-fade-in">
-                          <div className="text-4xl mb-2">🔮</div>
-                          <h3 className="text-lg font-bold text-purple-300 mb-1">{roomState.currentEvent.title}</h3>
-                          <p className="text-sm text-slate-300 mb-4 italic">"{roomState.currentEvent.description}"</p>
-                          <div className="text-xs font-bold uppercase tracking-wider text-purple-200 mb-4 bg-purple-900/50 py-1 rounded">
-                            効果: {
-                                roomState.currentEvent.effectType === 'MOVE_FORWARD' ? '進む' :
-                                roomState.currentEvent.effectType === 'MOVE_BACK' ? '戻る' :
-                                roomState.currentEvent.effectType === 'SKIP_TURN' ? '一回休み' : 'なし'
-                            } 
-                            {roomState.currentEvent.value > 0 && ` (${roomState.currentEvent.value})`}
-                          </div>
-                          {isMyTurn ? (
-                              <button
-                                onClick={handleApplyEvent}
-                                className="w-full py-2 bg-purple-600 hover:bg-purple-500 rounded-lg font-bold transition-colors"
-                              >
-                                結果を受け入れる
-                              </button>
-                          ) : (
-                              <div className="text-xs text-center text-slate-500">プレイヤーの選択待ち...</div>
-                          )}
-                       </div>
-                   </div>
-                )}
-              </div>
-            )}
+             </div>
           </div>
-
-          <div className="flex-grow flex flex-col p-4 overflow-hidden bg-slate-800">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ゲームログ</h3>
-            <div 
-              ref={logContainerRef}
-              className="flex-grow overflow-y-auto space-y-2 pr-2 scrollbar-hide"
-            >
-              {logs.map((log, i) => (
-                <div key={i} className="text-sm p-2 bg-slate-700/50 rounded border-l-2 border-blue-500 animate-fade-in">
-                  {log}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </main>
+      )}
     </div>
   );
 };
