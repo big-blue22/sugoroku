@@ -460,8 +460,8 @@ const App: React.FC = () => {
       </div>
 
 
-      {/* --- HUD: Auto Camera Button (Bottom Left) --- */}
-      <div className="absolute bottom-6 left-6 z-10">
+      {/* --- HUD: Auto Camera Button (Top Right) --- */}
+      <div className="absolute top-4 right-4 z-10">
         <button
             onClick={() => setAutoCamera(!autoCamera)}
             className={`px-4 py-2 rounded-full font-bold shadow-xl transition-all border text-sm flex items-center gap-2 ${
