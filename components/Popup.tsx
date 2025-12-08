@@ -36,7 +36,7 @@ const Popup: React.FC<PopupProps> = ({ message, type, isVisible }) => {
   return (
     <div 
       className={`
-        fixed top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
+        fixed top-[15%] left-1/2 transform -translate-x-1/2 -translate-y-1/2
         z-50 pointer-events-none transition-all duration-300 ease-out
         ${isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-4'}
       `}
