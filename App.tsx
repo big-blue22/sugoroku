@@ -37,6 +37,9 @@ const App: React.FC = () => {
   const [autoCamera, setAutoCamera] = useState(true);
   const [isRolling, setIsRolling] = useState(false);
 
+  // Track last processed popup to avoid duplication
+  const lastProcessedPopupTime = useRef<number>(0);
+
   // Refactored UI State
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [activeTab, setActiveTab] = useState<'players' | 'logs'>('players');
@@ -70,6 +73,14 @@ const App: React.FC = () => {
           });
       }
   }, [roomState?.lastLogTimestamp, roomState?.lastLog]);
+
+  // Handle Shared Popup Sync
+  useEffect(() => {
+    if (roomState?.latestPopup && roomState.latestPopup.timestamp > lastProcessedPopupTime.current) {
+      lastProcessedPopupTime.current = roomState.latestPopup.timestamp;
+      triggerPopup(roomState.latestPopup.message, roomState.latestPopup.type, 3000);
+    }
+  }, [roomState?.latestPopup]);
 
   // Scroll logs
   useEffect(() => {
@@ -202,7 +213,12 @@ const App: React.FC = () => {
           await updateGameState(roomId, {
               players: newPlayers,
               lastLog: `✨ ラッキー！ ${tile.effectValue}マス進みます。`,
-              lastLogTimestamp: Date.now()
+              lastLogTimestamp: Date.now(),
+              latestPopup: {
+                message: `✨ ラッキー！ ${tile.effectValue}マス進みます。`,
+                type: 'success',
+                timestamp: Date.now()
+              }
           });
 
           const dist = Math.abs(newPos - pos);
@@ -218,7 +234,12 @@ const App: React.FC = () => {
           await updateGameState(roomId, {
               players: newPlayers,
               lastLog: `💥 罠だ！ ${Math.abs(tile.effectValue)}マス戻ります。`,
-              lastLogTimestamp: Date.now()
+              lastLogTimestamp: Date.now(),
+              latestPopup: {
+                message: `💥 罠だ！ ${Math.abs(tile.effectValue)}マス戻ります。`,
+                type: 'danger',
+                timestamp: Date.now()
+              }
           });
 
           const dist = Math.abs(newPos - pos);

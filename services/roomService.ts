@@ -196,7 +196,12 @@ export const nextTurn = async (roomId: string, currentPlayers: Player[], activeI
         activePlayerIndex: nextIndex,
         diceValue: null,
         lastLog: `👉 ${nextPlayer.name} のターンです。`,
-        lastLogTimestamp: Date.now()
+        lastLogTimestamp: Date.now(),
+        latestPopup: {
+          message: `👉 ${nextPlayer.name} のターンです。`,
+          type: 'info',
+          timestamp: Date.now()
+        }
     };
   }
 
