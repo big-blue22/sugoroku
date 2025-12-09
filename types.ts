@@ -47,6 +47,7 @@ export interface RoomState {
   hostId: string; // ID of the player who created the room (for "Start Game" permission)
   status: 'WAITING' | 'PLAYING';
   createdAt: number;
+  lastActivityAt?: number; // Last activity timestamp for TTL management
 
   // Game State (Synced)
   players: Player[];

@@ -18,7 +18,7 @@ import { RoomState, Player, GamePhase, GameEvent } from '../types';
 import { BOARD_LAYOUT } from '../constants';
 
 const ROOMS_COLLECTION = 'rooms';
-const ROOM_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const ROOM_TTL_MS = 2 * 24 * 60 * 60 * 1000; // 48 hours (2 days)
 
 const cleanupExpiredRooms = async () => {
   try {
@@ -34,12 +34,17 @@ const cleanupExpiredRooms = async () => {
     }
 
     const batch = writeBatch(db);
-    snapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
+    snapshot.docs.forEach((docSnap) => {
+      const data = docSnap.data() as RoomState;
+      // Use lastActivityAt if available, otherwise fall back to createdAt
+      const lastActivity = data.lastActivityAt || data.createdAt;
+      if (lastActivity < cutoff) {
+        batch.delete(docSnap.ref);
+      }
     });
 
     await batch.commit();
-    console.log(`Cleaned up ${snapshot.size} expired rooms.`);
+    console.log(`Cleaned up expired rooms.`);
   } catch (error) {
     console.error("Failed to cleanup expired rooms:", error);
     // Suppress error so it doesn't break room creation
@@ -76,6 +81,7 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
     hostId: hostPlayer.name, // Using name as ID for simplicity in this scope, or we could generate a UUID
     status: 'WAITING',
     createdAt: Date.now(),
+    lastActivityAt: Date.now(),
     players: [hostPlayer],
     activePlayerIndex: 0,
     phase: GamePhase.SETUP,
@@ -126,7 +132,8 @@ export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' |
   await updateDoc(roomRef, {
     players: updatedPlayers,
     lastLog: `👋 ${newPlayer.name} が参加しました！`,
-    lastLogTimestamp: Date.now()
+    lastLogTimestamp: Date.now(),
+    lastActivityAt: Date.now()
   });
 
   return { playerId: newPlayerId };
@@ -146,13 +153,14 @@ export const startGame = async (roomId: string) => {
     status: 'PLAYING',
     phase: GamePhase.PLAYING,
     lastLog: "🏁 ゲーム開始！冒険の始まりです！",
-    lastLogTimestamp: Date.now()
+    lastLogTimestamp: Date.now(),
+    lastActivityAt: Date.now()
   });
 };
 
 export const updateGameState = async (roomId: string, updates: Partial<RoomState>) => {
   const roomRef = doc(db, ROOMS_COLLECTION, roomId);
-  await updateDoc(roomRef, updates);
+  await updateDoc(roomRef, { ...updates, lastActivityAt: Date.now() });
 };
 
 // Helper for "Next Turn" logic (call from Active Player client)
@@ -188,7 +196,8 @@ export const nextTurn = async (roomId: string, currentPlayers: Player[], activeI
         activePlayerIndex: actualNextIndex,
         diceValue: null,
         lastLog: `🚫 ${nextPlayer.name} は休みです。次は ${currentPlayers[actualNextIndex].name} の番です。`,
-        lastLogTimestamp: Date.now()
+        lastLogTimestamp: Date.now(),
+        lastActivityAt: Date.now()
     };
 
   } else {
@@ -197,6 +206,7 @@ export const nextTurn = async (roomId: string, currentPlayers: Player[], activeI
         diceValue: null,
         lastLog: `👉 ${nextPlayer.name} のターンです。`,
         lastLogTimestamp: Date.now(),
+        lastActivityAt: Date.now(),
         latestPopup: {
           message: `👉 ${nextPlayer.name} のターンです。`,
           type: 'info',
