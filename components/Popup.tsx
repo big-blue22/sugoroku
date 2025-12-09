@@ -1,6 +1,5 @@
 import React from 'react';
-
-export type PopupType = 'info' | 'success' | 'danger' | 'event';
+import { PopupType } from '../types';
 
 interface PopupProps {
   message: string | null;
@@ -51,4 +50,5 @@ const Popup: React.FC<PopupProps> = ({ message, type, isVisible }) => {
   );
 };
 
+export type { PopupType };
 export default Popup;

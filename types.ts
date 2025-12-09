@@ -14,6 +14,8 @@ export enum GamePhase {
   GAME_OVER = 'GAME_OVER'
 }
 
+export type PopupType = 'info' | 'success' | 'danger' | 'event';
+
 export interface Player {
   id: number;
   name: string;
@@ -55,6 +57,7 @@ export interface RoomState {
   diceValue: number | null;
   diceRollCount: number; // Increment to trigger animation on clients
   currentEvent: GameEvent | null;
+  latestPopup?: { message: string; type: PopupType; timestamp: number } | null;
 
   // Logs
   lastLog: string | null; // Latest log message to append
