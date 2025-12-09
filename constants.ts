@@ -1,7 +1,8 @@
 import { TileType } from './types';
 
-export const BOARD_SIZE = 30;
+export const BOARD_SIZE = 216;
 export const GRID_SCALE = 4.0;
+export const ROW_LENGTH = 12; // Number of tiles per row
 
 export const PLAYER_COLORS = [
   { name: '赤', class: 'red', hex: '#ef4444' },
@@ -12,55 +13,51 @@ export const PLAYER_COLORS = [
 
 export const AVATARS = ['🐶', '🐱', '🦊', '🐼', '🐸', '🦁', '🐯', '🦄'];
 
-// A fixed board layout for consistency, but could be randomized
-export const BOARD_LAYOUT: TileType[] = [
-  TileType.START,
-  TileType.NORMAL,
-  TileType.NORMAL,
-  TileType.GOOD,
-  TileType.NORMAL,
-  TileType.BAD,    // 5
-  TileType.NORMAL,
-  TileType.EVENT,
-  TileType.NORMAL,
-  TileType.GOOD,
-  TileType.NORMAL, // 10
-  TileType.BAD,
-  TileType.EVENT,
-  TileType.NORMAL,
-  TileType.NORMAL,
-  TileType.GOOD,   // 15
-  TileType.NORMAL,
-  TileType.EVENT,
-  TileType.BAD,
-  TileType.NORMAL,
-  TileType.NORMAL, // 20
-  TileType.EVENT,
-  TileType.GOOD,
-  TileType.BAD,
-  TileType.NORMAL,
-  TileType.EVENT,  // 25
-  TileType.BAD,
-  TileType.GOOD,
-  TileType.NORMAL,
-  TileType.GOAL
-];
+// Generate a pattern for the board layout
+// This ensures the board is populated with a mix of events
+const generateLayout = (): TileType[] => {
+  const layout: TileType[] = Array(BOARD_SIZE).fill(TileType.NORMAL);
 
-// Snake pattern coordinates (x, y)
-// 0,0  1,0  2,0  3,0  4,0  5,0  6,0
-//                                |
-// 0,1  1,1  2,1  3,1  4,1  5,1  6,1
-// |
-// 0,2 ...
-export const BOARD_COORDINATES = [
-  // Row 0 (Right)
-  {x: 0, y: 0}, {x: 1, y: 0}, {x: 2, y: 0}, {x: 3, y: 0}, {x: 4, y: 0}, {x: 5, y: 0}, {x: 6, y: 0},
-  // Row 1 (Left)
-  {x: 6, y: 1}, {x: 5, y: 1}, {x: 4, y: 1}, {x: 3, y: 1}, {x: 2, y: 1}, {x: 1, y: 1}, {x: 0, y: 1},
-  // Row 2 (Right)
-  {x: 0, y: 2}, {x: 1, y: 2}, {x: 2, y: 2}, {x: 3, y: 2}, {x: 4, y: 2}, {x: 5, y: 2}, {x: 6, y: 2},
-  // Row 3 (Left)
-  {x: 6, y: 3}, {x: 5, y: 3}, {x: 4, y: 3}, {x: 3, y: 3}, {x: 2, y: 3}, {x: 1, y: 3}, {x: 0, y: 3},
-  // Row 4 (Right - Finish)
-  {x: 0, y: 4}, {x: 1, y: 4}
-];
+  layout[0] = TileType.START;
+  layout[BOARD_SIZE - 1] = TileType.GOAL;
+
+  // Simple deterministic pattern for the middle tiles
+  // N, N, G, N, B, N, E, N, N, B, G, E (Length 12 pattern)
+  const pattern = [
+    TileType.NORMAL, TileType.NORMAL, TileType.GOOD,
+    TileType.NORMAL, TileType.BAD,    TileType.NORMAL,
+    TileType.EVENT,  TileType.NORMAL, TileType.NORMAL,
+    TileType.BAD,    TileType.GOOD,   TileType.EVENT
+  ];
+
+  for (let i = 1; i < BOARD_SIZE - 1; i++) {
+    // Use modulo to cycle through the pattern
+    layout[i] = pattern[(i - 1) % pattern.length];
+  }
+
+  return layout;
+};
+
+export const BOARD_LAYOUT: TileType[] = generateLayout();
+
+// Generate snake pattern coordinates dynamically
+// Row 0: 0 -> 11 (Left to Right)
+// Row 1: 11 -> 0 (Right to Left)
+// ...
+const generateCoordinates = () => {
+  const coords = [];
+  for (let i = 0; i < BOARD_SIZE; i++) {
+    const row = Math.floor(i / ROW_LENGTH);
+    const colIndex = i % ROW_LENGTH;
+
+    // Even rows (0, 2, 4...) go Left to Right (0 -> 11)
+    // Odd rows (1, 3, 5...) go Right to Left (11 -> 0)
+    const x = (row % 2 === 0) ? colIndex : (ROW_LENGTH - 1) - colIndex;
+    const y = row;
+
+    coords.push({ x, y });
+  }
+  return coords;
+};
+
+export const BOARD_COORDINATES = generateCoordinates();
