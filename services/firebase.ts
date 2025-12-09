@@ -1,23 +1,30 @@
-// Mock Firebase for local verification
 import { initializeApp } from 'firebase/app';
-// We still import these but we will mock the objects if needed, or rely on dummy config
 import { getFirestore } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
-  apiKey: "dummy-api-key",
-  authDomain: "dummy-auth-domain",
-  projectId: "dummy-project-id",
-  storageBucket: "dummy-storage-bucket",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:1234567890abcdef",
-  databaseURL: "https://dummy-project-id-default-rtdb.firebaseio.com"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL
 };
 
+// Simple validation to ensure required keys are present
 export const checkFirebaseConfig = (): string[] => {
-  return []; // Always pass check
+  const missingKeys: string[] = [];
+  if (!firebaseConfig.apiKey) missingKeys.push("VITE_FIREBASE_API_KEY");
+  if (!firebaseConfig.authDomain) missingKeys.push("VITE_FIREBASE_AUTH_DOMAIN");
+  if (!firebaseConfig.projectId) missingKeys.push("VITE_FIREBASE_PROJECT_ID");
+  if (!firebaseConfig.storageBucket) missingKeys.push("VITE_FIREBASE_STORAGE_BUCKET");
+  if (!firebaseConfig.messagingSenderId) missingKeys.push("VITE_FIREBASE_MESSAGING_SENDER_ID");
+  if (!firebaseConfig.appId) missingKeys.push("VITE_FIREBASE_APP_ID");
+  return missingKeys;
 };
 
+// Initialize Firebase only if config is valid (or let it fail, but we will check `checkFirebaseConfig` in the UI)
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const realtimeDb = getDatabase(app);
