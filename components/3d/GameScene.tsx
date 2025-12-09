@@ -147,10 +147,10 @@ const GameScene: React.FC<GameSceneProps> = ({
                         key={`path-${i}`}
                         position={[(start.x + end.x)/2, 0.02, (start.z + end.z)/2]}
                         rotation={[0, -angle, 0]}
+                        receiveShadow
                     >
-                        <planeGeometry args={[len, 0.4]} />
-                        <meshStandardMaterial color="#ffffff" opacity={0.3} transparent />
-                        {/* Dotted effect? Just simple transparent white for now */}
+                        <boxGeometry args={[len, 0.05, 0.6]} />
+                        <meshStandardMaterial color="#ffffff" />
                     </mesh>
                  )
              })}
