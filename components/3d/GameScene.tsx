@@ -3,9 +3,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { Tile, Player } from '../../types';
-import { BOARD_COORDINATES, GRID_SCALE } from '../../constants';
+import { getBoardPosition, getZoneForIndex } from '../../constants';
 import Tile3D from './Tile3D';
-import Terrain from './Terrain';
+import Environment from './Environment';
 import PlayerPawn3D from './PlayerPawn3D';
 import Die3D from './Die3D';
 
@@ -17,15 +17,6 @@ interface GameSceneProps {
   diceTrigger?: number;
   diceTarget?: number;
 }
-
-// Helper to convert grid coords to 3D world coords
-const getPosition = (index: number) => {
-  const coords = BOARD_COORDINATES[index] || {x: 0, y: 0};
-  return {
-    x: coords.x * GRID_SCALE,
-    z: coords.y * GRID_SCALE
-  };
-};
 
 // Calculate offsets for multiple players on the same tile (Square Formation)
 const getPlayerOffset = (playerIndex: number, allPlayers: Player[], currentPlayerPosIndex: number) => {
@@ -69,13 +60,13 @@ const CameraController: React.FC<{
       let targetPos = new THREE.Vector3(0, 0, 0);
 
       if (activeGroup) {
-          // Use the current visual position of the pawn
-          // Ignore Y (jump) to prevent motion sickness, stick to ground level Y=0
-          targetPos.set(activeGroup.position.x, 0, activeGroup.position.z);
+          // Track position including Y
+          targetPos.copy(activeGroup.position);
       }
 
       // Lerp camera position to be offset from target
-      const offset = new THREE.Vector3(0, 16, 20); // Higher and further back for larger grid
+      // Adjust offset based on Zone? Or just generic high angle?
+      const offset = new THREE.Vector3(0, 16, 20);
       const desiredPos = targetPos.clone().add(offset);
 
       state.camera.position.lerp(desiredPos, delta * 2);
@@ -101,7 +92,7 @@ const GameScene: React.FC<GameSceneProps> = ({
 }) => {
 
   const activePlayer = players[activePlayerIndex];
-  const activePos = getPosition(activePlayer.position);
+  const activePos = getBoardPosition(activePlayer.position);
 
   // Refs to track player meshes
   const playerRefs = useRef<(THREE.Group | null)[]>([]);
@@ -120,33 +111,40 @@ const GameScene: React.FC<GameSceneProps> = ({
 
         <ambientLight intensity={0.6} />
         <directionalLight
-          position={[10, 20, 10]}
+          position={[10, 50, 10]}
           intensity={1.2}
           castShadow
-          shadow-mapSize={[1024, 1024]}
+          shadow-mapSize={[2048, 2048]}
+          shadow-camera-left={-50}
+          shadow-camera-right={50}
+          shadow-camera-top={50}
+          shadow-camera-bottom={-50}
         />
 
-        <Terrain />
+        <Environment />
 
         {/* Path Lines */}
         <group>
              {board.map((_, i) => {
                  if (i >= board.length - 1) return null;
-                 const start = getPosition(i);
-                 const end = getPosition(i+1);
+                 const start = getBoardPosition(i);
+                 const end = getBoardPosition(i+1);
 
                  // Create a line between them
-                 // Using a thin box for the path
-                 const dx = end.x - start.x;
-                 const dz = end.z - start.z;
-                 const len = Math.sqrt(dx*dx + dz*dz);
-                 const angle = Math.atan2(dz, dx);
+                 const startVec = new THREE.Vector3(start.x, start.y, start.z);
+                 const endVec = new THREE.Vector3(end.x, end.y, end.z);
+
+                 const direction = new THREE.Vector3().subVectors(endVec, startVec);
+                 const len = direction.length();
+
+                 // Center point
+                 const center = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5);
 
                  return (
                     <mesh
                         key={`path-${i}`}
-                        position={[(start.x + end.x)/2, 0.02, (start.z + end.z)/2]}
-                        rotation={[0, -angle, 0]}
+                        position={[center.x, center.y + 0.02, center.z]}
+                        quaternion={new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction.normalize())}
                         receiveShadow
                     >
                         <boxGeometry args={[len, 0.05, 0.6]} />
@@ -158,8 +156,9 @@ const GameScene: React.FC<GameSceneProps> = ({
 
         {/* Tiles */}
         {board.map((tile, i) => {
-          const { x, z } = getPosition(i);
-          return <Tile3D key={tile.id} type={tile.type} x={x} z={z} index={i} />;
+          const { x, y, z } = getBoardPosition(i);
+          const zone = getZoneForIndex(i);
+          return <Tile3D key={tile.id} type={tile.type} x={x} y={y} z={z} index={i} theme={zone.themeId} />;
         })}
 
         {/* Players */}
@@ -181,11 +180,10 @@ const GameScene: React.FC<GameSceneProps> = ({
         })}
 
         {/* 3D Die */}
-        {/* We place it slightly offset from the active player so it doesn't land ON them */}
         <Die3D
            trigger={diceTrigger}
            targetValue={diceTarget}
-           position={[activePos.x + 2, 0, activePos.z + 2]} // Offset by 2 units
+           position={[activePos.x + 2, activePos.y + 5, activePos.z + 2]} // Start high above
         />
 
       </Canvas>
