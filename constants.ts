@@ -153,6 +153,23 @@ const generateCoordinates = (): Coordinate3D[] => {
       if (random() < 0.1) intendedDirection = 0;
     }
 
+    // Calculate elevation (Y) based on Zone rules
+    let desiredY = 0;
+    const LOWEST_ELEVATION = -5.0;
+
+    if (zone.themeId === 'underwater') {
+      desiredY = LOWEST_ELEVATION;
+    } else if (zone.themeId === 'cave') {
+      // Ascend from LOWEST_ELEVATION to 0
+      const progress = (i - zone.start) / (zone.end - zone.start);
+      desiredY = LOWEST_ELEVATION + (progress * -LOWEST_ELEVATION);
+    } else {
+      desiredY = 0;
+    }
+
+    // Calculate the dy needed to reach the desired elevation for this step
+    const dy = desiredY - currentPos.y;
+
     // Attempt to move. Try intended direction first, then others if blocked.
     const candidates = [intendedDirection];
     const others = [0, 1, 2, 3].filter(d => d !== intendedDirection);
@@ -163,16 +180,7 @@ const generateCoordinates = (): Coordinate3D[] => {
     let moved = false;
 
     for (const testDir of candidates) {
-      let dx = 0, dy = 0, dz = 0;
-
-      // Zone Y logic
-      if (zone.themeId === 'cave') {
-        if (i % 3 === 0) dy = -0.8;
-      } else if (zone.themeId === 'rhone') {
-        if (i % 2 === 0) dy = 1.0;
-      } else if (zone.themeId === 'underwater') {
-        if (currentPos.y > -5) dy = -0.2;
-      }
+      let dx = 0, dz = 0;
 
       switch (testDir) {
         case 0: dz = 1; break;
@@ -199,10 +207,7 @@ const generateCoordinates = (): Coordinate3D[] => {
     // Fallback if trapped (should be very rare)
     if (!moved) {
       // Force intended direction even if overlapping to keep game going
-      let dx = 0, dy = 0, dz = 0;
-      if (zone.themeId === 'cave' && i % 3 === 0) dy = -0.8;
-      else if (zone.themeId === 'rhone' && i % 2 === 0) dy = 1.0;
-      else if (zone.themeId === 'underwater' && currentPos.y > -5) dy = -0.2;
+      let dx = 0, dz = 0;
 
       switch (intendedDirection) {
         case 0: dz = 1; break;
