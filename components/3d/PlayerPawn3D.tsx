@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Vector3, Group } from 'three';
 import { Html } from '@react-three/drei';
-import { BOARD_COORDINATES, GRID_SCALE } from '../../constants';
+import { getBoardPosition } from '../../constants';
 
 interface PlayerPawn3DProps {
   id: number;
@@ -13,14 +13,6 @@ interface PlayerPawn3DProps {
   offset: { x: number; z: number };
   isActive: boolean;
 }
-
-const getPosition = (index: number) => {
-  const coords = BOARD_COORDINATES[index] || {x: 0, y: 0};
-  return {
-    x: coords.x * GRID_SCALE,
-    z: coords.y * GRID_SCALE
-  };
-};
 
 const PlayerPawn3D = forwardRef<Group, PlayerPawn3DProps>(({ id, avatar, color, targetIndex, offset, isActive }, ref) => {
   const groupRef = useRef<Group>(null);
@@ -44,8 +36,8 @@ const PlayerPawn3D = forwardRef<Group, PlayerPawn3DProps>(({ id, avatar, color, 
   // Initialize position on mount
   useEffect(() => {
      if (groupRef.current) {
-         const pos = getPosition(targetIndex);
-         groupRef.current.position.set(pos.x + offset.x, 0, pos.z + offset.z);
+         const pos = getBoardPosition(targetIndex);
+         groupRef.current.position.set(pos.x + offset.x, pos.y, pos.z + offset.z);
          visualIndexRef.current = targetIndex;
      }
   }, []);
@@ -100,10 +92,12 @@ const PlayerPawn3D = forwardRef<Group, PlayerPawn3DProps>(({ id, avatar, color, 
 
         // Setup start/end vectors
         startPosRef.current.copy(groupRef.current.position);
-        startPosRef.current.y = 0; // Ensure start is on ground
 
-        const nextPos = getPosition(nextIndex);
-        endPosRef.current.set(nextPos.x + offset.x, 0, nextPos.z + offset.z);
+        // Ensure startY matches the previous tile's surface (minus offset/jump)
+        // Actually, groupRef.current.position is already where we want to start from (including any previous slight errors or current location)
+
+        const nextPos = getBoardPosition(nextIndex);
+        endPosRef.current.set(nextPos.x + offset.x, nextPos.y, nextPos.z + offset.z);
 
         progressRef.current = 0;
         isAnimatingRef.current = true;
@@ -128,36 +122,32 @@ const PlayerPawn3D = forwardRef<Group, PlayerPawn3DProps>(({ id, avatar, color, 
             // Interpolate
             const p = progressRef.current;
 
-            // Linear X/Z
+            // Linear X/Z/Y
             const currX = THREE.MathUtils.lerp(startPosRef.current.x, endPosRef.current.x, p);
             const currZ = THREE.MathUtils.lerp(startPosRef.current.z, endPosRef.current.z, p);
+            // We also lerp base Y so we go up/down slopes
+            const currBaseY = THREE.MathUtils.lerp(startPosRef.current.y, endPosRef.current.y, p);
 
-            // Parabolic Y (Jump)
+            // Parabolic Y (Jump) on top of Base Y
             const jumpHeight = 2.0;
-            const currY = Math.sin(p * Math.PI) * jumpHeight;
+            const jumpY = Math.sin(p * Math.PI) * jumpHeight;
 
-            groupRef.current.position.set(currX, currY, currZ);
+            groupRef.current.position.set(currX, currBaseY + jumpY, currZ);
 
             // Face direction of movement
             if (startPosRef.current.distanceTo(endPosRef.current) > 0.1) {
-                 groupRef.current.lookAt(endPosRef.current.x, currY, endPosRef.current.z);
+                 groupRef.current.lookAt(endPosRef.current.x, currBaseY + jumpY, endPosRef.current.z);
             }
         }
     } else {
         // Idle correction
         // If external offset prop changes (e.g. 2nd player joins same tile), we need to slide to new offset
-        const targetPos = getPosition(visualIndexRef.current);
-        const targetVec = new Vector3(targetPos.x + offset.x, 0, targetPos.z + offset.z);
+        const targetPos = getBoardPosition(visualIndexRef.current);
+        const targetVec = new Vector3(targetPos.x + offset.x, targetPos.y, targetPos.z + offset.z);
 
         if (groupRef.current.position.distanceTo(targetVec) > 0.01) {
              // Slide smoothly to new slot position
              groupRef.current.position.lerp(targetVec, delta * 5);
-        }
-
-        // Idle animation for active player
-        if (isActive && !isAnimatingRef.current) {
-            // Gentle rotation or bounce?
-            // groupRef.current.rotation.y += delta;
         }
     }
   });
