@@ -78,10 +78,8 @@ export const getZoneForIndex = (index: number): ZoneConfig => {
 };
 
 // --- Tile Layout Generation ---
-// Generates tiles based on Zone probabilities
 const generateLayout = (): TileType[] => {
   const layout: TileType[] = Array(BOARD_SIZE).fill(TileType.NORMAL);
-
   layout[0] = TileType.START;
   layout[BOARD_SIZE - 1] = TileType.GOAL;
 
@@ -90,18 +88,11 @@ const generateLayout = (): TileType[] => {
     const dist = zone.tileDistribution;
     const rand = Math.random();
 
-    // Cumulative probability check
-    if (rand < dist.normal) {
-      layout[i] = TileType.NORMAL;
-    } else if (rand < dist.normal + dist.good) {
-      layout[i] = TileType.GOOD;
-    } else if (rand < dist.normal + dist.good + dist.bad) {
-      layout[i] = TileType.BAD;
-    } else {
-      layout[i] = TileType.EVENT;
-    }
+    if (rand < dist.normal) layout[i] = TileType.NORMAL;
+    else if (rand < dist.normal + dist.good) layout[i] = TileType.GOOD;
+    else if (rand < dist.normal + dist.good + dist.bad) layout[i] = TileType.BAD;
+    else layout[i] = TileType.EVENT;
   }
-
   return layout;
 };
 
@@ -111,149 +102,152 @@ export const BOARD_LAYOUT: TileType[] = generateLayout();
 // --- 3D Path Generation ---
 interface Coordinate3D {
   x: number;
-  y: number; // Elevation
-  z: number; // Depth
+  y: number;
+  z: number;
 }
 
-// Direction vectors
 const DIRS = {
-  N: { x: 0, z: -1 }, // North (Negative Z)
-  S: { x: 0, z: 1 },  // South (Positive Z)
-  E: { x: 1, z: 0 },  // East (Positive X)
-  W: { x: -1, z: 0 }, // West (Negative X)
+  N: { x: 0, z: -1 },
+  S: { x: 0, z: 1 },
+  E: { x: 1, z: 0 },
+  W: { x: -1, z: 0 },
 };
 
 interface IslandConfig {
-  width: number; // Width of the snake grid
-  flow: 'N' | 'S' | 'E' | 'W'; // General direction of the island expansion
-  bridge: 'N' | 'S' | 'E' | 'W' | null; // Direction of the bridge FROM the previous zone
+  width: number;
+  flow: 'N' | 'S' | 'E' | 'W';
+  bridge: 'N' | 'S' | 'E' | 'W' | null;
 }
 
 const ISLAND_CONFIGS: Record<string, IslandConfig> = {
-  grass:      { width: 5, flow: 'E', bridge: null }, // Start
+  grass:      { width: 5, flow: 'E', bridge: null },
   fairy:      { width: 5, flow: 'E', bridge: 'E' },
-  magma:      { width: 5, flow: 'E', bridge: 'E' }, // Expand East
-  underwater: { width: 5, flow: 'S', bridge: 'S' }, // Turn South
-  cave:       { width: 5, flow: 'W', bridge: 'W' }, // Turn West
-  rhone:      { width: 5, flow: 'W', bridge: 'W' }, // Continue West
-  hargon:     { width: 6, flow: 'S', bridge: 'S' }, // Turn South (final area)
+  magma:      { width: 5, flow: 'E', bridge: 'E' },
+  underwater: { width: 5, flow: 'S', bridge: 'S' },
+  cave:       { width: 5, flow: 'W', bridge: 'W' },
+  rhone:      { width: 5, flow: 'W', bridge: 'W' },
+  hargon:     { width: 6, flow: 'S', bridge: 'S' },
 };
+
+// Export bounds for Environment.tsx to use
+export const ZONE_BOUNDS: Record<string, { minX: number, maxX: number, minZ: number, maxZ: number }> = {};
 
 const generateCoordinates = (): Coordinate3D[] => {
   const coords: Coordinate3D[] = [];
+  let cursor = { x: 0, y: 0, z: 0 };
 
-  // Trackers
-  let currentPos = { x: 0, y: 0, z: 0 };
-  let cursor = { ...currentPos };
-
-  // Loop through all tiles
-  // We process zone by zone to handle bridges and islands cleanly
   for (let zIdx = 0; zIdx < ZONES.length; zIdx++) {
     const zone = ZONES[zIdx];
     const config = ISLAND_CONFIGS[zone.themeId];
-
     const zoneLength = zone.end - zone.start + 1;
-    let bridgeLength = (zIdx === 0) ? 0 : 3; // First 3 tiles are bridge (except start)
+    let bridgeLength = (zIdx === 0) ? 0 : 3;
     const islandLength = zoneLength - bridgeLength;
 
-    // --- 1. Generate Bridge ---
+    // Track bounds for this zone
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+
+    // --- 1. Bridge ---
     if (bridgeLength > 0 && config.bridge) {
       const dir = DIRS[config.bridge];
-
-      // Special Elevation Logic for Bridge
-      // Magma -> Underwater: Drop from 0 to -5
-      // Cave -> Rhone: No change (Cave ends at 0)
-
       let startY = cursor.y;
       let targetY = startY;
-
       if (zone.themeId === 'underwater') targetY = -5.0;
 
       for (let b = 0; b < bridgeLength; b++) {
         cursor.x += dir.x;
         cursor.z += dir.z;
-
-        // Interpolate Y
         const progress = (b + 1) / bridgeLength;
         cursor.y = startY + (targetY - startY) * progress;
 
         coords.push({ ...cursor });
+        // Bridge tiles are NOT part of the "Island Plate" bounds usually,
+        // but let's exclude them so the plate is just the island.
       }
     }
 
-    // --- 2. Generate Island ---
-    // We want to fill a rectangle of `width` roughly moving in `flow` direction.
-    // To do this, we treat the island as a local 2D grid (u, v) where 'u' is the flow direction, 'v' is cross.
+    // --- 2. Island (Winding Snake) ---
+    // We move primarily in 'Flow' direction, wiggling in 'Cross' direction.
+    // 'Cross' is +90deg from Flow.
+    let flowDir = DIRS[config.flow];
+    let crossDir = { x: 0, z: 0 }; // Default
+    if (config.flow === 'E') crossDir = DIRS.S;
+    if (config.flow === 'S') crossDir = DIRS.W;
+    if (config.flow === 'W') crossDir = DIRS.N;
+    if (config.flow === 'N') crossDir = DIRS.E;
 
-    // Determine vectors for 'u' (forward) and 'v' (right/cross)
-    let uDir = DIRS[config.flow];
-    let vDir = { x: 0, z: 0 };
+    // We alternate: Move 'width' steps in Cross, then '2' steps in Flow (Gap), then 'width' steps in -Cross.
+    let segmentLen = config.width;
+    let gapLen = 2; // 1 tile + 1 space = 2 steps? No, we place tiles.
+    // To create a gap of 1 empty tile, we need to place 2 connecting tiles.
+    // T1 (end of row) -> T2 (connector 1) -> T3 (start of next row)
+    // Distance T1->T3 is 2. Pos T1 to Pos T3 is 2 units.
+    // Visually: [X] [ ] [X] -> Gap is 1.
 
-    // Cross direction is usually clockwise 90deg from Flow
-    if (config.flow === 'E') vDir = DIRS.S;
-    if (config.flow === 'S') vDir = DIRS.W;
-    if (config.flow === 'W') vDir = DIRS.N;
-    if (config.flow === 'N') vDir = DIRS.E;
-
-    // Ensure we start the island cleanly relative to the bridge end
-    // We want the island to "attach" to the bridge.
-    // The cursor is currently at the last bridge tile.
-    // The first island tile should be +1 in the Flow direction?
-    // Or we can just start snaking.
-
-    const islandStartBase = { ...cursor };
+    // State machine for the snake
+    let state: 'cross' | 'gap' = 'cross';
+    let dirMult = 1; // 1 or -1 for cross direction
+    let stepsInState = 0;
 
     for (let i = 0; i < islandLength; i++) {
-      // Calculate local grid position (u, v)
-      // Snake pattern:
-      // u increases every 'width' steps?
-      // No, we want width to be the cross-section.
-      // So 'v' loops 0..width-1, then u increments.
+      let dx = 0, dz = 0;
 
-      const u = Math.floor(i / config.width);
-      const vRaw = i % config.width;
-
-      // Snake: If u is odd, invert v to connect ends
-      const v = (u % 2 === 0) ? vRaw : (config.width - 1 - vRaw);
-
-      // Calculate World Position
-      // Pos = Start + (u * uDir) + (v * vDir)
-      // Plus an initial offset to separate from bridge?
-      // Let's add 1 unit of uDir to clear the bridge.
-
-      const uOffset = u + 1;
-      // Center the v-offset so the bridge enters the middle?
-      // Or just Start at corner? Corner is simpler.
-
-      const tx = islandStartBase.x + (uOffset * uDir.x) + (v * vDir.x);
-      const tz = islandStartBase.z + (uOffset * uDir.z) + (v * vDir.z);
-
-      // Elevation Logic
-      let ty = cursor.y; // Default to current (which is bridge end)
-
-      if (zone.themeId === 'underwater') {
-        ty = -5.0;
-      } else if (zone.themeId === 'cave') {
-        // Rise from -5 to 0
-        const progress = i / (islandLength - 1);
-        ty = -5.0 + (progress * 5.0);
+      if (i === 0) {
+          // First tile of island: Step away from bridge in Flow direction?
+          // Or just start at cursor (which is bridge end).
+          // Let's take 1 step in Flow to clear the bridge properly.
+          dx = flowDir.x;
+          dz = flowDir.z;
+          // Reset state to start the pattern
+          state = 'cross';
+          stepsInState = 0;
       } else {
-        ty = 0;
+          // Snake Logic
+          if (state === 'cross') {
+             dx = crossDir.x * dirMult;
+             dz = crossDir.z * dirMult;
+             stepsInState++;
+             if (stepsInState >= segmentLen) {
+                 state = 'gap';
+                 stepsInState = 0;
+             }
+          } else {
+             // Gap state: move in Flow direction
+             dx = flowDir.x;
+             dz = flowDir.z;
+             stepsInState++;
+             if (stepsInState >= gapLen) {
+                 state = 'cross';
+                 stepsInState = 0;
+                 dirMult *= -1; // Flip cross direction
+             }
+          }
       }
 
-      // Special fix: If we are just starting the island, ensure we don't overlap the bridge tile
-      // The logic `uOffset = u + 1` ensures we are at least 1 step away in Flow direction.
+      cursor.x += dx;
+      cursor.z += dz;
 
-      coords.push({ x: tx, y: ty, z: tz });
+      // Elevation
+      let ty = cursor.y;
+      if (zone.themeId === 'underwater') ty = -5.0;
+      else if (zone.themeId === 'cave') {
+          const progress = i / (islandLength - 1);
+          ty = -5.0 + (progress * 5.0);
+      } else ty = 0;
 
-      // Update cursor for next steps (though we calculate absolute)
-      cursor = { x: tx, y: ty, z: tz };
+      cursor.y = ty;
+      coords.push({ ...cursor });
+
+      // Update Bounds (Only for Island tiles)
+      minX = Math.min(minX, cursor.x);
+      maxX = Math.max(maxX, cursor.x);
+      minZ = Math.min(minZ, cursor.z);
+      maxZ = Math.max(maxZ, cursor.z);
     }
+
+    // Save bounds
+    ZONE_BOUNDS[zone.themeId] = { minX, maxX, minZ, maxZ };
   }
 
-  // Ensure we have exactly BOARD_SIZE coords
-  // (The loops above rely on ZONES start/end. The sum of lengths should match)
-  // Just in case of off-by-one errors in config vs math:
   while (coords.length < BOARD_SIZE) {
     coords.push({ ...cursor });
   }
@@ -261,15 +255,13 @@ const generateCoordinates = (): Coordinate3D[] => {
   return coords.slice(0, BOARD_SIZE);
 };
 
-// We run the generator once
 export const BOARD_COORDINATES = generateCoordinates();
 
-// Helper to get scaled world position from index
 export const getBoardPosition = (index: number) => {
     const coord = BOARD_COORDINATES[index] || { x: 0, y: 0, z: 0 };
     return {
         x: coord.x * GRID_SCALE,
-        y: coord.y * (GRID_SCALE * 0.5), // Scale height slightly less aggressively
+        y: coord.y * (GRID_SCALE * 0.5),
         z: coord.z * GRID_SCALE
     };
 };
