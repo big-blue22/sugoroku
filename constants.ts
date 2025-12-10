@@ -109,123 +109,156 @@ export const BOARD_LAYOUT: TileType[] = generateLayout();
 
 
 // --- 3D Path Generation ---
-// "Turtle Graphics" style generator for organic paths
 interface Coordinate3D {
   x: number;
   y: number; // Elevation
   z: number; // Depth
 }
 
+// Direction vectors
+const DIRS = {
+  N: { x: 0, z: -1 }, // North (Negative Z)
+  S: { x: 0, z: 1 },  // South (Positive Z)
+  E: { x: 1, z: 0 },  // East (Positive X)
+  W: { x: -1, z: 0 }, // West (Negative X)
+};
+
+interface IslandConfig {
+  width: number; // Width of the snake grid
+  flow: 'N' | 'S' | 'E' | 'W'; // General direction of the island expansion
+  bridge: 'N' | 'S' | 'E' | 'W' | null; // Direction of the bridge FROM the previous zone
+}
+
+const ISLAND_CONFIGS: Record<string, IslandConfig> = {
+  grass:      { width: 5, flow: 'E', bridge: null }, // Start
+  fairy:      { width: 5, flow: 'E', bridge: 'E' },
+  magma:      { width: 5, flow: 'E', bridge: 'E' }, // Expand East
+  underwater: { width: 5, flow: 'S', bridge: 'S' }, // Turn South
+  cave:       { width: 5, flow: 'W', bridge: 'W' }, // Turn West
+  rhone:      { width: 5, flow: 'W', bridge: 'W' }, // Continue West
+  hargon:     { width: 6, flow: 'S', bridge: 'S' }, // Turn South (final area)
+};
+
 const generateCoordinates = (): Coordinate3D[] => {
   const coords: Coordinate3D[] = [];
+
+  // Trackers
   let currentPos = { x: 0, y: 0, z: 0 };
-  let direction = 0; // 0 = +Z (Forward), 1 = +X (Right), 2 = -Z (Back), 3 = -X (Left)
+  let cursor = { ...currentPos };
 
-  // Seed for consistency (simple pseudo-random)
-  let seed = 1234;
-  const random = () => {
-    seed = (seed * 9301 + 49297) % 233280;
-    return seed / 233280;
-  };
+  // Loop through all tiles
+  // We process zone by zone to handle bridges and islands cleanly
+  for (let zIdx = 0; zIdx < ZONES.length; zIdx++) {
+    const zone = ZONES[zIdx];
+    const config = ISLAND_CONFIGS[zone.themeId];
 
-  // Visited set to prevent overlaps (Self-Avoiding Walk)
-  const visited = new Set<string>();
-  visited.add(`0.00,0.00,0.00`);
+    const zoneLength = zone.end - zone.start + 1;
+    let bridgeLength = (zIdx === 0) ? 0 : 3; // First 3 tiles are bridge (except start)
+    const islandLength = zoneLength - bridgeLength;
 
-  coords.push({ ...currentPos });
+    // --- 1. Generate Bridge ---
+    if (bridgeLength > 0 && config.bridge) {
+      const dir = DIRS[config.bridge];
 
-  for (let i = 1; i < BOARD_SIZE; i++) {
-    const zone = getZoneForIndex(i);
+      // Special Elevation Logic for Bridge
+      // Magma -> Underwater: Drop from 0 to -5
+      // Cave -> Rhone: No change (Cave ends at 0)
 
-    // Determine direction
-    const turnChance = 0.3;
-    let intendedDirection = direction;
+      let startY = cursor.y;
+      let targetY = startY;
 
-    // Start Phase: Force forward to avoid immediate clutter/looping
-    const isStart = i <= 3;
-    if (isStart) {
-      intendedDirection = 0; // Forward (+Z)
-    } else {
-      if (random() < turnChance) {
-        if (random() < 0.5) intendedDirection = (direction + 1) % 4;
-        else intendedDirection = (direction + 3) % 4;
-      }
-      if (random() < 0.1) intendedDirection = 0;
-    }
+      if (zone.themeId === 'underwater') targetY = -5.0;
 
-    // Calculate elevation (Y) based on Zone rules
-    let desiredY = 0;
-    const LOWEST_ELEVATION = -5.0;
+      for (let b = 0; b < bridgeLength; b++) {
+        cursor.x += dir.x;
+        cursor.z += dir.z;
 
-    if (zone.themeId === 'underwater') {
-      desiredY = LOWEST_ELEVATION;
-    } else if (zone.themeId === 'cave') {
-      // Ascend from LOWEST_ELEVATION to 0
-      const progress = (i - zone.start) / (zone.end - zone.start);
-      desiredY = LOWEST_ELEVATION + (progress * -LOWEST_ELEVATION);
-    } else {
-      desiredY = 0;
-    }
+        // Interpolate Y
+        const progress = (b + 1) / bridgeLength;
+        cursor.y = startY + (targetY - startY) * progress;
 
-    // Calculate the dy needed to reach the desired elevation for this step
-    const dy = desiredY - currentPos.y;
-
-    // Attempt to move. Try intended direction first, then others if blocked.
-    const candidates = [intendedDirection];
-    const others = [0, 1, 2, 3].filter(d => d !== intendedDirection);
-    // Shuffle others randomly
-    others.sort(() => random() - 0.5);
-    candidates.push(...others);
-
-    let moved = false;
-
-    for (const testDir of candidates) {
-      let dx = 0, dz = 0;
-
-      switch (testDir) {
-        case 0: dz = 1; break;
-        case 1: dx = 1; break;
-        case 2: dz = -1; break;
-        case 3: dx = -1; break;
-      }
-
-      const nextX = currentPos.x + dx;
-      const nextY = currentPos.y + dy;
-      const nextZ = currentPos.z + dz;
-      const key = `${nextX.toFixed(2)},${nextY.toFixed(2)},${nextZ.toFixed(2)}`;
-
-      if (!visited.has(key)) {
-        currentPos = { x: nextX, y: nextY, z: nextZ };
-        direction = testDir;
-        visited.add(key);
-        coords.push({ ...currentPos });
-        moved = true;
-        break;
+        coords.push({ ...cursor });
       }
     }
 
-    // Fallback if trapped (should be very rare)
-    if (!moved) {
-      // Force intended direction even if overlapping to keep game going
-      let dx = 0, dz = 0;
+    // --- 2. Generate Island ---
+    // We want to fill a rectangle of `width` roughly moving in `flow` direction.
+    // To do this, we treat the island as a local 2D grid (u, v) where 'u' is the flow direction, 'v' is cross.
 
-      switch (intendedDirection) {
-        case 0: dz = 1; break;
-        case 1: dx = 1; break;
-        case 2: dz = -1; break;
-        case 3: dx = -1; break;
+    // Determine vectors for 'u' (forward) and 'v' (right/cross)
+    let uDir = DIRS[config.flow];
+    let vDir = { x: 0, z: 0 };
+
+    // Cross direction is usually clockwise 90deg from Flow
+    if (config.flow === 'E') vDir = DIRS.S;
+    if (config.flow === 'S') vDir = DIRS.W;
+    if (config.flow === 'W') vDir = DIRS.N;
+    if (config.flow === 'N') vDir = DIRS.E;
+
+    // Ensure we start the island cleanly relative to the bridge end
+    // We want the island to "attach" to the bridge.
+    // The cursor is currently at the last bridge tile.
+    // The first island tile should be +1 in the Flow direction?
+    // Or we can just start snaking.
+
+    const islandStartBase = { ...cursor };
+
+    for (let i = 0; i < islandLength; i++) {
+      // Calculate local grid position (u, v)
+      // Snake pattern:
+      // u increases every 'width' steps?
+      // No, we want width to be the cross-section.
+      // So 'v' loops 0..width-1, then u increments.
+
+      const u = Math.floor(i / config.width);
+      const vRaw = i % config.width;
+
+      // Snake: If u is odd, invert v to connect ends
+      const v = (u % 2 === 0) ? vRaw : (config.width - 1 - vRaw);
+
+      // Calculate World Position
+      // Pos = Start + (u * uDir) + (v * vDir)
+      // Plus an initial offset to separate from bridge?
+      // Let's add 1 unit of uDir to clear the bridge.
+
+      const uOffset = u + 1;
+      // Center the v-offset so the bridge enters the middle?
+      // Or just Start at corner? Corner is simpler.
+
+      const tx = islandStartBase.x + (uOffset * uDir.x) + (v * vDir.x);
+      const tz = islandStartBase.z + (uOffset * uDir.z) + (v * vDir.z);
+
+      // Elevation Logic
+      let ty = cursor.y; // Default to current (which is bridge end)
+
+      if (zone.themeId === 'underwater') {
+        ty = -5.0;
+      } else if (zone.themeId === 'cave') {
+        // Rise from -5 to 0
+        const progress = i / (islandLength - 1);
+        ty = -5.0 + (progress * 5.0);
+      } else {
+        ty = 0;
       }
-      currentPos.x += dx;
-      currentPos.y += dy;
-      currentPos.z += dz;
-      const key = `${currentPos.x.toFixed(2)},${currentPos.y.toFixed(2)},${currentPos.z.toFixed(2)}`;
-      visited.add(key);
-      coords.push({ ...currentPos });
-      direction = intendedDirection;
+
+      // Special fix: If we are just starting the island, ensure we don't overlap the bridge tile
+      // The logic `uOffset = u + 1` ensures we are at least 1 step away in Flow direction.
+
+      coords.push({ x: tx, y: ty, z: tz });
+
+      // Update cursor for next steps (though we calculate absolute)
+      cursor = { x: tx, y: ty, z: tz };
     }
   }
 
-  return coords;
+  // Ensure we have exactly BOARD_SIZE coords
+  // (The loops above rely on ZONES start/end. The sum of lengths should match)
+  // Just in case of off-by-one errors in config vs math:
+  while (coords.length < BOARD_SIZE) {
+    coords.push({ ...cursor });
+  }
+
+  return coords.slice(0, BOARD_SIZE);
 };
 
 // We run the generator once
