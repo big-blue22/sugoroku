@@ -128,72 +128,98 @@ const generateCoordinates = (): Coordinate3D[] => {
     return seed / 233280;
   };
 
+  // Visited set to prevent overlaps (Self-Avoiding Walk)
+  const visited = new Set<string>();
+  visited.add(`0.00,0.00,0.00`);
+
   coords.push({ ...currentPos });
 
   for (let i = 1; i < BOARD_SIZE; i++) {
     const zone = getZoneForIndex(i);
 
-    // Default movement vector
-    let dx = 0;
-    let dy = 0;
-    let dz = 0;
+    // Determine direction
+    const turnChance = 0.3;
+    let intendedDirection = direction;
 
-    // Determine direction change based on zone
-    // We want organic curves, not strict 90 degrees if possible,
-    // but grid based is safer for gameplay clarity.
-    // Let's stick to Grid steps (1.0 distance) but vary the direction freq.
-
-    const turnChance = 0.3; // Chance to turn left or right
-    if (random() < turnChance) {
-        if (random() < 0.5) direction = (direction + 1) % 4;
-        else direction = (direction + 3) % 4; // -1
+    // Start Phase: Force forward to avoid immediate clutter/looping
+    const isStart = i <= 3;
+    if (isStart) {
+      intendedDirection = 0; // Forward (+Z)
+    } else {
+      if (random() < turnChance) {
+        if (random() < 0.5) intendedDirection = (direction + 1) % 4;
+        else intendedDirection = (direction + 3) % 4;
+      }
+      if (random() < 0.1) intendedDirection = 0;
     }
 
-    // Force general forward movement (Z+) to avoid getting stuck or looping too much
-    // biasing towards +Z and +X to spread out the map diagonally
-    if (random() < 0.1) direction = 0; // Reset to forward occasionally
+    // Attempt to move. Try intended direction first, then others if blocked.
+    const candidates = [intendedDirection];
+    const others = [0, 1, 2, 3].filter(d => d !== intendedDirection);
+    // Shuffle others randomly
+    others.sort(() => random() - 0.5);
+    candidates.push(...others);
 
-    // Zone specific overrides
-    if (zone.themeId === 'cave') {
-       // Cave: Go Down
-       // We accept floating point positions for smooth slopes?
-       // No, keeping it grid-aligned for tiles, but maybe step down every N tiles
-       if (i % 3 === 0) dy = -0.8;
-    } else if (zone.themeId === 'rhone') {
-       // Rhone: Go Up steep
-       if (i % 2 === 0) dy = 1.0;
-    } else if (zone.themeId === 'underwater') {
-       // Underwater: Stay low/stable
-       if (currentPos.y > -5) dy = -0.2; // Sink to -5
-    } else if (zone.themeId === 'hargon') {
-        // Hargon: Flat plateau high up
-        // Stabilize Y
+    let moved = false;
+
+    for (const testDir of candidates) {
+      let dx = 0, dy = 0, dz = 0;
+
+      // Zone Y logic
+      if (zone.themeId === 'cave') {
+        if (i % 3 === 0) dy = -0.8;
+      } else if (zone.themeId === 'rhone') {
+        if (i % 2 === 0) dy = 1.0;
+      } else if (zone.themeId === 'underwater') {
+        if (currentPos.y > -5) dy = -0.2;
+      }
+
+      switch (testDir) {
+        case 0: dz = 1; break;
+        case 1: dx = 1; break;
+        case 2: dz = -1; break;
+        case 3: dx = -1; break;
+      }
+
+      const nextX = currentPos.x + dx;
+      const nextY = currentPos.y + dy;
+      const nextZ = currentPos.z + dz;
+      const key = `${nextX.toFixed(2)},${nextY.toFixed(2)},${nextZ.toFixed(2)}`;
+
+      if (!visited.has(key)) {
+        currentPos = { x: nextX, y: nextY, z: nextZ };
+        direction = testDir;
+        visited.add(key);
+        coords.push({ ...currentPos });
+        moved = true;
+        break;
+      }
     }
 
-    // Calculate Grid Step
-    // To prevent overlapping path, we might need a history check or "push" logic
-    // For now, simple random walk with bias
-    switch (direction) {
-        case 0: dz = 1; break; // Forward
-        case 1: dx = 1; break; // Right
-        case 2: dz = -1; break; // Back
-        case 3: dx = -1; break; // Left
+    // Fallback if trapped (should be very rare)
+    if (!moved) {
+      // Force intended direction even if overlapping to keep game going
+      let dx = 0, dy = 0, dz = 0;
+      if (zone.themeId === 'cave' && i % 3 === 0) dy = -0.8;
+      else if (zone.themeId === 'rhone' && i % 2 === 0) dy = 1.0;
+      else if (zone.themeId === 'underwater' && currentPos.y > -5) dy = -0.2;
+
+      switch (intendedDirection) {
+        case 0: dz = 1; break;
+        case 1: dx = 1; break;
+        case 2: dz = -1; break;
+        case 3: dx = -1; break;
+      }
+      currentPos.x += dx;
+      currentPos.y += dy;
+      currentPos.z += dz;
+      const key = `${currentPos.x.toFixed(2)},${currentPos.y.toFixed(2)},${currentPos.z.toFixed(2)}`;
+      visited.add(key);
+      coords.push({ ...currentPos });
+      direction = intendedDirection;
     }
-
-    // Prevent immediate back-tracking (U-turn) logic could go here
-    // But simple bias +Z helps.
-
-    // Apply change
-    currentPos.x += dx;
-    currentPos.y += dy;
-    currentPos.z += dz;
-
-    // Push copy
-    coords.push({ ...currentPos });
   }
 
-  // Post-processing to smooth Y or fix collisions could happen here
-  // But for now, raw turtle output
   return coords;
 };
 
