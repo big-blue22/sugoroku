@@ -140,7 +140,12 @@ const generateCoordinates = (): Coordinate3D[] => {
     const zone = ZONES[zIdx];
     const config = ISLAND_CONFIGS[zone.themeId];
     const zoneLength = zone.end - zone.start + 1;
+
     let bridgeLength = (zIdx === 0) ? 0 : 3;
+    // Fix for overlapping maps: Increase bridge length for specific zones
+    if (zone.themeId === 'magma') bridgeLength = 8;
+    if (zone.themeId === 'underwater') bridgeLength = 8;
+
     const islandLength = zoneLength - bridgeLength;
 
     // Track bounds for this zone
