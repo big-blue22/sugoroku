@@ -113,7 +113,7 @@ const getZoneColor = (theme: string) => {
     switch(theme) {
         case 'grass': return '#4ade80';
         case 'fairy': return '#f0abfc';
-        case 'magma': return '#450a0a';
+        case 'magma': return '#ea580c';
         case 'underwater': return '#1e3a8a';
         case 'cave': return '#1e293b';
         case 'rhone': return '#f8fafc';
