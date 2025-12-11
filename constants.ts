@@ -161,7 +161,21 @@ const generateCoordinates = (): Coordinate3D[] => {
       for (let b = 0; b < bridgeLength; b++) {
         cursor.x += dir.x;
         cursor.z += dir.z;
-        const progress = (b + 1) / bridgeLength;
+
+        // "Safe Takeoff": Keep Y flat for the first tile to clear island padding
+        // Only apply if bridge is reasonably long to avoid weird snaps on short bridges
+        let progress = 0;
+        if (bridgeLength > 2) {
+          if (b < 1) {
+            progress = 0; // Flat
+          } else {
+            // Remap b from [1..length-1] to [0..1]
+            progress = (b - 0) / (bridgeLength - 1);
+          }
+        } else {
+          progress = (b + 1) / bridgeLength;
+        }
+
         cursor.y = startY + (targetY - startY) * progress;
 
         coords.push({ ...cursor });
