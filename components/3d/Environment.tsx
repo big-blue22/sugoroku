@@ -37,8 +37,12 @@ const Environment: React.FC = () => {
        const color = getZoneColor(zone.themeId);
 
        // 2. Generate Children (Bridge Blocks + Pillars + Decorations)
+       let bridgeLength = (zIdx === 0) ? 0 : 3;
+       if (zIdx !== 0 && (zone.themeId === 'magma' || zone.themeId === 'underwater')) {
+           bridgeLength = 8;
+       }
+
        const children = [];
-       const bridgeLength = (zIdx === 0) ? 0 : 3;
 
        for (let i = zone.start; i <= zone.end; i++) {
            const isBridge = (i < zone.start + bridgeLength);
