@@ -38,7 +38,7 @@ const Environment: React.FC = () => {
 
        // 2. Generate Children (Bridge Blocks + Pillars + Decorations)
        let bridgeLength = (zIdx === 0) ? 0 : 3;
-       if (zIdx !== 0 && (zone.themeId === 'magma' || zone.themeId === 'underwater')) {
+       if (zIdx !== 0 && (zone.themeId === 'magma' || zone.themeId === 'underwater' || zone.themeId === 'rhone' || zone.themeId === 'hargon')) {
            bridgeLength = 8;
        }
 
@@ -51,7 +51,7 @@ const Environment: React.FC = () => {
            // A. Bridge Tiles: Always render a block
            if (isBridge) {
                children.push(
-                   <mesh key={`bridge-${i}`} receiveShadow position={[pos.x, pos.y - 1, pos.z]}>
+                   <mesh key={`bridge-${i}`} receiveShadow position={[pos.x, pos.y - 1 + 0.02, pos.z]}>
                        <boxGeometry args={[3, 2, 3]} />
                        <meshStandardMaterial color={color} />
                    </mesh>
