@@ -38,19 +38,14 @@ const Environment: React.FC = () => {
 
        // 2. Generate Children (Bridge Blocks + Pillars + Decorations)
        const children = [];
-       let bridgeLength = (zIdx === 0) ? 0 : 3;
-       // Only extend bridge logic for Magma as requested, keeping others default
-       if (bridgeLength > 0 && zone.themeId === 'magma') {
-            bridgeLength = 8;
-       }
+       const bridgeLength = (zIdx === 0) ? 0 : 3;
 
        for (let i = zone.start; i <= zone.end; i++) {
            const isBridge = (i < zone.start + bridgeLength);
            const pos = getBoardPosition(i); // Already scaled
 
            // A. Bridge Tiles: Always render a block
-           // EXCEPTION: Magma zone has extended plate covering the bridge, so skip block to avoid z-fighting
-           if (isBridge && zone.themeId !== 'magma') {
+           if (isBridge) {
                children.push(
                    <mesh key={`bridge-${i}`} receiveShadow position={[pos.x, pos.y - 1, pos.z]}>
                        <boxGeometry args={[3, 2, 3]} />
