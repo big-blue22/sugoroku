@@ -49,8 +49,7 @@ const Environment: React.FC = () => {
            const pos = getBoardPosition(i); // Already scaled
 
            // A. Bridge Tiles: Always render a block
-           // EXCEPTION: Magma zone has extended plate covering the bridge, so skip block to avoid z-fighting
-           if (isBridge && zone.themeId !== 'magma') {
+           if (isBridge) {
                children.push(
                    <mesh key={`bridge-${i}`} receiveShadow position={[pos.x, pos.y - 1, pos.z]}>
                        <boxGeometry args={[3, 2, 3]} />
