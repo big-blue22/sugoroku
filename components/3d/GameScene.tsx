@@ -183,7 +183,7 @@ const GameScene: React.FC<GameSceneProps> = ({
         <Die3D
            trigger={diceTrigger}
            targetValue={diceTarget}
-           position={[activePos.x + 2, activePos.y + 5, activePos.z + 2]} // Start high above
+           position={[activePos.x + 2, activePos.y, activePos.z + 2]} // Start high above
         />
 
       </Canvas>
