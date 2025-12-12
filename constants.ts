@@ -126,7 +126,7 @@ const ISLAND_CONFIGS: Record<string, IslandConfig> = {
   underwater: { width: 5, flow: 'S', bridge: 'S' },
   cave:       { width: 5, flow: 'W', bridge: 'W' },
   rhone:      { width: 5, flow: 'W', bridge: 'W' },
-  hargon:     { width: 6, flow: 'S', bridge: 'S' },
+  hargon:     { width: 6, flow: 'S', bridge: 'W' },
 };
 
 // Export bounds for Environment.tsx to use
