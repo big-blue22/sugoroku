@@ -353,7 +353,7 @@ const App: React.FC = () => {
           lastLogTimestamp: Date.now()
       });
       
-      await new Promise(r => setTimeout(r, 1500));
+      await new Promise(r => setTimeout(r, 3000));
       setIsBattleRolling(false);
   };
 
