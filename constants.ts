@@ -181,6 +181,14 @@ const generateCoordinates = (): Coordinate3D[] => {
         coords.push({ ...cursor });
         // Bridge tiles are NOT part of the "Island Plate" bounds usually,
         // but let's exclude them so the plate is just the island.
+
+        // EXCEPTION: For Magma zone, we include bridge in bounds to extend the plate
+        if (zone.themeId === 'magma') {
+            minX = Math.min(minX, cursor.x);
+            maxX = Math.max(maxX, cursor.x);
+            minZ = Math.min(minZ, cursor.z);
+            maxZ = Math.max(maxZ, cursor.z);
+        }
       }
     }
 
