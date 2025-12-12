@@ -13,15 +13,6 @@ export const PLAYER_COLORS = [
 
 export const AVATARS = ['🐶', '🐱', '🦊', '🐼', '🐸', '🦁', '🐯', '🦄'];
 
-// Zone definitions based on tile position
-// Each zone contains a range of tile positions
-export interface ZoneDefinition {
-  name: string;
-  startTile: number;
-  endTile: number;
-  monster: Monster | null; // null means no monster spawns in this zone
-}
-
 // Monster data for each zone
 export const MONSTERS: Record<string, Monster> = {
   SLIME: {
@@ -69,37 +60,15 @@ export const MONSTERS: Record<string, Monster> = {
   },
 };
 
-// Zone configuration (divide 216 tiles into 7 zones)
-// Zone 7 (Hargon's Temple) has no monsters
-export const ZONES: ZoneDefinition[] = [
-  { name: '草原', startTile: 0, endTile: 30, monster: MONSTERS.SLIME },
-  { name: '妖精の宮殿', startTile: 31, endTile: 61, monster: MONSTERS.GHOST },
-  { name: 'マグマ洞窟', startTile: 62, endTile: 92, monster: MONSTERS.SKELETON },
-  { name: '精霊の海のほこら', startTile: 93, endTile: 123, monster: MONSTERS.KRAKEN },
-  { name: 'ロンダルキアの洞窟', startTile: 124, endTile: 154, monster: MONSTERS.DRAGON },
-  { name: 'ロンダルキア', startTile: 155, endTile: 185, monster: MONSTERS.KILLER_MACHINE },
-  { name: 'ハーゴン神殿', startTile: 186, endTile: 215, monster: null }, // No monsters
-];
-
-// Get the zone for a given tile position
-export const getZoneForTile = (tilePosition: number): ZoneDefinition | null => {
-  return ZONES.find(zone => tilePosition >= zone.startTile && tilePosition <= zone.endTile) || null;
-};
-
-// Get monster for a given tile position
-export const getMonsterForTile = (tilePosition: number): Monster | null => {
-  const zone = getZoneForTile(tilePosition);
-  if (!zone || !zone.monster) return null;
-  
-  // Create a copy of the monster to avoid mutating the original
-  const monster = { ...zone.monster };
-  
-  // Special handling for Killer Machine's random attack
-  if (monster.isSpecialAttack) {
-    monster.attack = Math.random() < 0.75 ? 6 : 12;
-  }
-  
-  return monster;
+// Zone to Monster mapping based on themeId
+export const ZONE_MONSTERS: Record<string, Monster | null> = {
+  'grass': MONSTERS.SLIME,
+  'fairy': MONSTERS.GHOST,
+  'magma': MONSTERS.SKELETON,
+  'underwater': MONSTERS.KRAKEN,
+  'cave': MONSTERS.DRAGON,
+  'rhone': MONSTERS.KILLER_MACHINE,
+  'hargon': null, // No monsters in Hargon's Temple
 };
 
 // Battle encounter rate for each tile type
@@ -171,6 +140,23 @@ export const ZONES: ZoneConfig[] = [
 
 export const getZoneForIndex = (index: number): ZoneConfig => {
   return ZONES.find(z => index >= z.start && index <= z.end) || ZONES[0];
+};
+
+// Get monster for a given tile position
+export const getMonsterForTile = (tilePosition: number): Monster | null => {
+  const zone = getZoneForIndex(tilePosition);
+  const monster = ZONE_MONSTERS[zone.themeId];
+  if (!monster) return null;
+  
+  // Create a copy of the monster to avoid mutating the original
+  const monsterCopy = { ...monster };
+  
+  // Special handling for Killer Machine's random attack
+  if (monsterCopy.isSpecialAttack) {
+    monsterCopy.attack = Math.random() < 0.75 ? 6 : 12;
+  }
+  
+  return monsterCopy;
 };
 
 // --- Tile Layout Generation ---
