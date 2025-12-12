@@ -1,8 +1,8 @@
-import { TileType } from './types';
+import { TileType, Monster } from './types';
 
 export const BOARD_SIZE = 216;
 export const GRID_SCALE = 4.0;
-export const ROW_LENGTH = 12; // Unused for snake gen now, but kept for compatibility
+export const ROW_LENGTH = 12; // Number of tiles per row
 
 export const PLAYER_COLORS = [
   { name: '赤', class: 'red', hex: '#ef4444' },
@@ -12,6 +12,102 @@ export const PLAYER_COLORS = [
 ];
 
 export const AVATARS = ['🐶', '🐱', '🦊', '🐼', '🐸', '🦁', '🐯', '🦄'];
+
+// Zone definitions based on tile position
+// Each zone contains a range of tile positions
+export interface ZoneDefinition {
+  name: string;
+  startTile: number;
+  endTile: number;
+  monster: Monster | null; // null means no monster spawns in this zone
+}
+
+// Monster data for each zone
+export const MONSTERS: Record<string, Monster> = {
+  SLIME: {
+    name: 'スライム',
+    hp: 2,
+    attack: 1,
+    goldReward: 50,
+    emoji: '🟢',
+  },
+  GHOST: {
+    name: 'ゴースト',
+    hp: 2,
+    attack: 2,
+    goldReward: 75,
+    emoji: '👻',
+  },
+  SKELETON: {
+    name: 'ガイコツ',
+    hp: 3,
+    attack: 3,
+    goldReward: 100,
+    emoji: '💀',
+  },
+  KRAKEN: {
+    name: 'クラーゴン',
+    hp: 3,
+    attack: 4,
+    goldReward: 125,
+    emoji: '🦑',
+  },
+  DRAGON: {
+    name: 'ドラゴン',
+    hp: 4,
+    attack: 5,
+    goldReward: 150,
+    emoji: '🐉',
+  },
+  KILLER_MACHINE: {
+    name: 'キラーマシン',
+    hp: 4,
+    attack: 6, // Default, but will be randomly determined (75%: 6, 25%: 12)
+    goldReward: 200,
+    emoji: '🤖',
+    isSpecialAttack: true,
+  },
+};
+
+// Zone configuration (divide 216 tiles into 7 zones)
+// Zone 7 (Hargon's Temple) has no monsters
+export const ZONES: ZoneDefinition[] = [
+  { name: '草原', startTile: 0, endTile: 30, monster: MONSTERS.SLIME },
+  { name: '妖精の宮殿', startTile: 31, endTile: 61, monster: MONSTERS.GHOST },
+  { name: 'マグマ洞窟', startTile: 62, endTile: 92, monster: MONSTERS.SKELETON },
+  { name: '精霊の海のほこら', startTile: 93, endTile: 123, monster: MONSTERS.KRAKEN },
+  { name: 'ロンダルキアの洞窟', startTile: 124, endTile: 154, monster: MONSTERS.DRAGON },
+  { name: 'ロンダルキア', startTile: 155, endTile: 185, monster: MONSTERS.KILLER_MACHINE },
+  { name: 'ハーゴン神殿', startTile: 186, endTile: 215, monster: null }, // No monsters
+];
+
+// Get the zone for a given tile position
+export const getZoneForTile = (tilePosition: number): ZoneDefinition | null => {
+  return ZONES.find(zone => tilePosition >= zone.startTile && tilePosition <= zone.endTile) || null;
+};
+
+// Get monster for a given tile position
+export const getMonsterForTile = (tilePosition: number): Monster | null => {
+  const zone = getZoneForTile(tilePosition);
+  if (!zone || !zone.monster) return null;
+  
+  // Create a copy of the monster to avoid mutating the original
+  const monster = { ...zone.monster };
+  
+  // Special handling for Killer Machine's random attack
+  if (monster.isSpecialAttack) {
+    monster.attack = Math.random() < 0.75 ? 6 : 12;
+  }
+  
+  return monster;
+};
+
+// Battle encounter rate for each tile type
+export const BATTLE_ENCOUNTER_RATES: Record<string, number> = {
+  [TileType.NORMAL]: 0.25, // 25% chance
+  [TileType.BAD]: 1.0,     // 100% chance (replaces old trap effects)
+  // Other tile types don't trigger battles
+};
 
 // --- Zone Configuration ---
 // Defines the 7 main zones and their characteristics

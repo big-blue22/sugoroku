@@ -61,7 +61,7 @@ const generateRoomId = () => {
   return result;
 };
 
-export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position' | 'skipNextTurn' | 'isWinner'>): Promise<{ roomId: string, playerId: number }> => {
+export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position' | 'skipNextTurn' | 'isWinner' | 'gold'>): Promise<{ roomId: string, playerId: number }> => {
   // Trigger cleanup asynchronously
   cleanupExpiredRooms();
 
@@ -73,7 +73,8 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
     ...hostPlayerConfig,
     position: 0,
     skipNextTurn: false,
-    isWinner: false
+    isWinner: false,
+    gold: 0
   };
 
   const initialRoomState: RoomState = {
@@ -98,7 +99,7 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
   return { roomId, playerId };
 };
 
-export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' | 'position' | 'skipNextTurn' | 'isWinner'>): Promise<{ playerId: number } | null> => {
+export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' | 'position' | 'skipNextTurn' | 'isWinner' | 'gold'>): Promise<{ playerId: number } | null> => {
   const roomRef = doc(db, ROOMS_COLLECTION, roomId);
   const roomSnap = await getDoc(roomRef);
 
@@ -118,7 +119,8 @@ export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' |
     ...playerConfig,
     position: 0,
     skipNextTurn: false,
-    isWinner: false
+    isWinner: false,
+    gold: 0
   };
 
   // Add player to the array

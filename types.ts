@@ -11,6 +11,7 @@ export enum GamePhase {
   SETUP = 'SETUP',
   PLAYING = 'PLAYING',
   EVENT_PROCESSING = 'EVENT_PROCESSING',
+  BATTLE = 'BATTLE',
   GAME_OVER = 'GAME_OVER'
 }
 
@@ -24,6 +25,27 @@ export interface Player {
   position: number;
   skipNextTurn: boolean;
   isWinner: boolean;
+  gold: number; // Player's gold/currency
+}
+
+// Monster Definition
+export interface Monster {
+  name: string;
+  hp: number;
+  attack: number; // Number of tiles to move back on defeat
+  goldReward: number;
+  emoji: string;
+  isSpecialAttack?: boolean; // For special attack calculation (e.g., Killer Machine)
+}
+
+// Battle State
+export interface BattleState {
+  isActive: boolean;
+  monster: Monster | null;
+  playerRoll: number | null;
+  result: 'pending' | 'victory' | 'defeat' | null;
+  goldEarned: number;
+  tilesBack: number;
 }
 
 export interface Tile {
@@ -59,6 +81,9 @@ export interface RoomState {
   diceRollCount: number; // Increment to trigger animation on clients
   currentEvent: GameEvent | null;
   latestPopup?: { message: string; type: PopupType; timestamp: number } | null;
+
+  // Battle State
+  battleState?: BattleState | null;
 
   // Logs
   lastLog: string | null; // Latest log message to append

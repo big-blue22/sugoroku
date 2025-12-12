@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GamePhase, Player, Tile, TileType, RoomState } from './types';
+import { GamePhase, Player, Tile, TileType, RoomState, BattleState, Monster } from './types';
 import SetupScreen from './components/SetupScreen';
 import Popup, { PopupType } from './components/Popup';
+import BattleModal from './components/BattleModal';
 import GameScene from './components/3d/GameScene';
 import { generateGameEvent } from './services/gameService';
 import {
@@ -10,13 +11,13 @@ import {
     updateGameState,
     nextTurn
 } from './services/roomService';
-import { BOARD_LAYOUT, BOARD_SIZE } from './constants';
+import { BOARD_LAYOUT, BOARD_SIZE, getMonsterForTile, BATTLE_ENCOUNTER_RATES } from './constants';
 
 const buildBoard = (): Tile[] => {
   return BOARD_LAYOUT.map((type, index) => ({
     id: index,
     type,
-    effectValue: type === TileType.GOOD ? 3 : type === TileType.BAD ? -3 : 0
+    effectValue: type === TileType.GOOD ? 3 : 0 // BAD tiles now trigger battles instead of moving back
   }));
 };
 
@@ -43,6 +44,9 @@ const App: React.FC = () => {
   // Refactored UI State
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [activeTab, setActiveTab] = useState<'players' | 'logs'>('players');
+
+  // Battle State
+  const [isBattleRolling, setIsBattleRolling] = useState(false);
 
   // Derived State (local caching of animations)
   const [localDiceValue, setLocalDiceValue] = useState<number | null>(null);
@@ -190,7 +194,7 @@ const App: React.FC = () => {
       await handleTileEffect(targetPos, activePlayer, updatedPlayers);
   };
 
-  const handleTileEffect = async (pos: number, player: Player, currentPlayers: Player[]) => {
+  const handleTileEffect = async (pos: number, player: Player, currentPlayers: Player[], skipBattleCheck: boolean = false) => {
       if (!roomId) return;
       const tile = board[pos];
 
@@ -205,6 +209,38 @@ const App: React.FC = () => {
           return;
       }
 
+      // Skip battle check if player was moved here from damage (to prevent infinite loops)
+      if (!skipBattleCheck) {
+          // Check for battle encounter based on tile type
+          const encounterRate = BATTLE_ENCOUNTER_RATES[tile.type] ?? 0;
+          
+          if (encounterRate > 0) {
+              const shouldBattle = Math.random() < encounterRate;
+              
+              if (shouldBattle) {
+                  const monster = getMonsterForTile(pos);
+                  
+                  if (monster) {
+                      // Start battle
+                      await updateGameState(roomId, {
+                          phase: GamePhase.BATTLE,
+                          battleState: {
+                              isActive: true,
+                              monster: monster,
+                              playerRoll: null,
+                              result: 'pending',
+                              goldEarned: 0,
+                              tilesBack: 0,
+                          },
+                          lastLog: `⚔️ ${monster.name}が現れた！`,
+                          lastLogTimestamp: Date.now()
+                      });
+                      return;
+                  }
+              }
+          }
+      }
+
       if (tile.type === TileType.GOOD && tile.effectValue) {
           await new Promise(r => setTimeout(r, 1000));
           const newPos = Math.min(BOARD_SIZE - 1, pos + tile.effectValue);
@@ -217,27 +253,6 @@ const App: React.FC = () => {
               latestPopup: {
                 message: `✨ ラッキー！ ${tile.effectValue}マス進みます。`,
                 type: 'success',
-                timestamp: Date.now()
-              }
-          });
-
-          const dist = Math.abs(newPos - pos);
-          const waitTime = (dist * 500) + 500;
-          await new Promise(r => setTimeout(r, waitTime));
-          await nextTurn(roomId, newPlayers, roomState!.activePlayerIndex);
-
-      } else if (tile.type === TileType.BAD && tile.effectValue) {
-          await new Promise(r => setTimeout(r, 1000));
-          const newPos = Math.max(0, pos + tile.effectValue);
-
-          const newPlayers = currentPlayers.map(p => p.id === player.id ? { ...p, position: newPos } : p);
-          await updateGameState(roomId, {
-              players: newPlayers,
-              lastLog: `💥 罠だ！ ${Math.abs(tile.effectValue)}マス戻ります。`,
-              lastLogTimestamp: Date.now(),
-              latestPopup: {
-                message: `💥 罠だ！ ${Math.abs(tile.effectValue)}マス戻ります。`,
-                type: 'danger',
                 timestamp: Date.now()
               }
           });
@@ -311,6 +326,100 @@ const App: React.FC = () => {
       await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
   };
 
+  // --- Battle Handlers ---
+
+  const handleBattleRoll = async () => {
+      if (!roomId || !roomState || !roomState.battleState?.monster || isBattleRolling) return;
+      
+      const player = roomState.players[roomState.activePlayerIndex];
+      if (player.id !== myPlayerId) return;
+      
+      setIsBattleRolling(true);
+      
+      const roll = Math.floor(Math.random() * 6) + 1;
+      const monster = roomState.battleState.monster;
+      const isVictory = roll >= monster.hp;
+      
+      // Update battle state with roll result
+      await updateGameState(roomId, {
+          battleState: {
+              ...roomState.battleState,
+              playerRoll: roll,
+              result: isVictory ? 'victory' : 'defeat',
+              goldEarned: isVictory ? monster.goldReward : 0,
+              tilesBack: isVictory ? 0 : monster.attack,
+          },
+          lastLog: `🎲 ${player.name} の攻撃！ 出目: ${roll}`,
+          lastLogTimestamp: Date.now()
+      });
+      
+      await new Promise(r => setTimeout(r, 1500));
+      setIsBattleRolling(false);
+  };
+
+  const handleBattleEnd = async () => {
+      if (!roomId || !roomState || !roomState.battleState) return;
+      
+      const player = roomState.players[roomState.activePlayerIndex];
+      if (player.id !== myPlayerId) return;
+      
+      const battleState = roomState.battleState;
+      const isVictory = battleState.result === 'victory';
+      
+      let newPlayers = [...roomState.players];
+      let currentPlayer = { ...newPlayers[roomState.activePlayerIndex] };
+      const originalPos = currentPlayer.position;
+      
+      if (isVictory) {
+          // Add gold reward
+          currentPlayer.gold = (currentPlayer.gold || 0) + battleState.goldEarned;
+          newPlayers[roomState.activePlayerIndex] = currentPlayer;
+          
+          await updateGameState(roomId, {
+              players: newPlayers,
+              battleState: null,
+              phase: GamePhase.PLAYING,
+              lastLog: `🎉 ${player.name} は ${battleState.monster?.name} を倒し、${battleState.goldEarned}G を獲得！`,
+              lastLogTimestamp: Date.now(),
+              latestPopup: {
+                  message: `🎉 勝利！ +${battleState.goldEarned}G`,
+                  type: 'success',
+                  timestamp: Date.now()
+              }
+          });
+          
+          await new Promise(r => setTimeout(r, 1000));
+          await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
+          
+      } else {
+          // Move player back
+          const newPos = Math.max(0, currentPlayer.position - battleState.tilesBack);
+          currentPlayer.position = newPos;
+          newPlayers[roomState.activePlayerIndex] = currentPlayer;
+          
+          await updateGameState(roomId, {
+              players: newPlayers,
+              battleState: null,
+              phase: GamePhase.PLAYING,
+              lastLog: `💥 ${player.name} は ${battleState.monster?.name} に敗北し、${battleState.tilesBack}マス後退！`,
+              lastLogTimestamp: Date.now(),
+              latestPopup: {
+                  message: `💥 敗北！ ${battleState.tilesBack}マス後退`,
+                  type: 'danger',
+                  timestamp: Date.now()
+              }
+          });
+          
+          // Wait for movement animation
+          const dist = Math.abs(newPos - originalPos);
+          const waitTime = (dist * 500) + 500;
+          await new Promise(r => setTimeout(r, waitTime));
+          
+          // After damage movement, do NOT trigger tile effects (skip battle check)
+          await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
+      }
+  };
+
 
   // --- Render ---
 
@@ -376,6 +485,25 @@ const App: React.FC = () => {
         message={popupData?.msg || null} 
         type={popupData?.type || 'info'} 
         isVisible={showPopup} 
+      />
+
+      {/* --- Battle Modal --- */}
+      <BattleModal
+        isOpen={roomState.phase === GamePhase.BATTLE && !!roomState.battleState}
+        monster={roomState.battleState?.monster || null}
+        playerName={activePlayer.name}
+        isMyTurn={isMyTurn}
+        battleState={roomState.battleState || {
+          isActive: false,
+          monster: null,
+          playerRoll: null,
+          result: null,
+          goldEarned: 0,
+          tilesBack: 0
+        }}
+        onRollDice={handleBattleRoll}
+        onClose={handleBattleEnd}
+        isRolling={isBattleRolling}
       />
 
       {/* --- Game Scene (Background) --- */}
@@ -457,6 +585,7 @@ const App: React.FC = () => {
                                   </div>
                                   <div className="text-xs text-slate-500 flex items-center gap-2 mt-1">
                                       <span>マス: {p.position}</span>
+                                      <span className="text-yellow-400">💰 {p.gold || 0}G</span>
                                       {p.skipNextTurn && <span className="text-red-400">⚠ 休み</span>}
                                   </div>
                               </div>
