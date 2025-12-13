@@ -232,6 +232,10 @@ const App: React.FC = () => {
 
           // Handle Effects
           await handleTileEffect(targetPos, activePlayer, updatedPlayers);
+      } catch (error: any) {
+          console.error("Dice roll failed:", error);
+          setIsRolling(false);
+          triggerPopup(`エラーが発生しました: ${error.message || '不明なエラー'}`, 'danger');
       } finally {
           setIsProcessingTurn(false);
       }
@@ -385,25 +389,31 @@ const App: React.FC = () => {
       
       setIsBattleRolling(true);
       
-      const roll = Math.floor(Math.random() * 6) + 1;
-      const monster = roomState.battleState.monster;
-      const isVictory = roll >= monster.hp;
-      
-      // Update battle state with roll result
-      await updateGameState(roomId, {
-          battleState: {
-              ...roomState.battleState,
-              playerRoll: roll,
-              result: isVictory ? 'victory' : 'defeat',
-              goldEarned: isVictory ? monster.goldReward : 0,
-              tilesBack: isVictory ? 0 : monster.attack,
-          },
-          lastLog: `🎲 ${player.name} の攻撃！ 出目: ${roll}`,
-          lastLogTimestamp: Date.now()
-      });
-      
-      await new Promise(r => setTimeout(r, 3000));
-      setIsBattleRolling(false);
+      try {
+          const roll = Math.floor(Math.random() * 6) + 1;
+          const monster = roomState.battleState.monster;
+          const isVictory = roll >= monster.hp;
+
+          // Update battle state with roll result
+          await updateGameState(roomId, {
+              battleState: {
+                  ...roomState.battleState,
+                  playerRoll: roll,
+                  result: isVictory ? 'victory' : 'defeat',
+                  goldEarned: isVictory ? monster.goldReward : 0,
+                  tilesBack: isVictory ? 0 : monster.attack,
+              },
+              lastLog: `🎲 ${player.name} の攻撃！ 出目: ${roll}`,
+              lastLogTimestamp: Date.now()
+          });
+
+          await new Promise(r => setTimeout(r, 3000));
+      } catch (error: any) {
+          console.error("Battle roll failed:", error);
+          triggerPopup(`エラーが発生しました: ${error.message || '不明なエラー'}`, 'danger');
+      } finally {
+          setIsBattleRolling(false);
+      }
   };
 
   const handleBattleEnd = async () => {

@@ -78,6 +78,13 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onJoinGame }) => {
     }
   };
 
+  useEffect(() => {
+    if (mode === 'CREATE') {
+        handleCreateRoom();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
   if (mode === 'INITIAL') {
       return (
         <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans text-slate-100">
@@ -162,7 +169,7 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onJoinGame }) => {
                  <h2 className="text-xl font-bold mb-4">ルームを作成中...</h2>
                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
                  {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
-                 {!isLoading && handleCreateRoom() /* Auto trigger */}
+                 {/* {!isLoading && handleCreateRoom()} - Fixed: Cannot render Promise */}
              </div>
           </div>
       )
