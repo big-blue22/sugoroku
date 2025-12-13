@@ -37,9 +37,12 @@ const App: React.FC = () => {
   const [popupData, setPopupData] = useState<{ msg: string; type: PopupType } | null>(null);
   const [autoCamera, setAutoCamera] = useState(true);
   const [isRolling, setIsRolling] = useState(false);
+  const [isProcessingTurn, setIsProcessingTurn] = useState(false); // Lock for active player during logic execution
+  const [isBoardBusy, setIsBoardBusy] = useState(false); // Global lock when pieces are moving
 
   // Track last processed popup to avoid duplication
   const lastProcessedPopupTime = useRef<number>(0);
+  const prevPlayersRef = useRef<Player[]>([]);
 
   // Refactored UI State
   const [showInfoPanel, setShowInfoPanel] = useState(false);
@@ -64,6 +67,41 @@ const App: React.FC = () => {
 
     return () => unsubscribe();
   }, [roomId]);
+
+  // Handle Board Movement Lock (Prevents rolling while pieces move)
+  useEffect(() => {
+      if (!roomState) return;
+
+      const currentPlayers = roomState.players;
+      const prevPlayers = prevPlayersRef.current;
+      let maxDist = 0;
+
+      if (prevPlayers.length > 0) {
+          currentPlayers.forEach(p => {
+              const prev = prevPlayers.find(pp => pp.id === p.id);
+              if (prev && prev.position !== p.position) {
+                  const dist = Math.abs(p.position - prev.position);
+                  if (dist > maxDist) maxDist = dist;
+              }
+          });
+      }
+
+      // Update ref for next compare
+      prevPlayersRef.current = currentPlayers;
+
+      if (maxDist > 0) {
+          setIsBoardBusy(true);
+          // Calculate animation time (match logic in handleRollDice + buffer)
+          // 500ms per tile + 500ms buffer
+          const animTime = (maxDist * 500) + 500;
+
+          const timer = setTimeout(() => {
+              setIsBoardBusy(false);
+          }, animTime);
+
+          return () => clearTimeout(timer);
+      }
+  }, [roomState?.players]);
 
   // Handle Logs Sync
   useEffect(() => {
@@ -146,52 +184,57 @@ const App: React.FC = () => {
   // --- Core Game Logic (Active Player Only) ---
 
   const handleRollDice = async () => {
-      if (!roomId || !roomState || isRolling) return;
+      if (!roomId || !roomState || isRolling || isProcessingTurn || isBoardBusy) return;
 
       const activePlayer = roomState.players[roomState.activePlayerIndex];
       // Only active player can roll
       if (activePlayer.id !== myPlayerId) return;
 
+      setIsProcessingTurn(true);
       setIsRolling(true);
 
-      const roll = Math.floor(Math.random() * 6) + 1;
+      try {
+          const roll = Math.floor(Math.random() * 6) + 1;
 
-      // Update DB with Dice Roll
-      await updateGameState(roomId, {
-          diceValue: roll,
-          diceRollCount: (roomState.diceRollCount || 0) + 1,
-          lastLog: `${activePlayer.name} は ${roll} を出した！`,
-          lastLogTimestamp: Date.now()
-      });
+          // Update DB with Dice Roll
+          await updateGameState(roomId, {
+              diceValue: roll,
+              diceRollCount: (roomState.diceRollCount || 0) + 1,
+              lastLog: `${activePlayer.name} は ${roll} を出した！`,
+              lastLogTimestamp: Date.now()
+          });
 
-      // Wait for animation (approx 1.5s - 2s)
-      await new Promise(r => setTimeout(r, 2000));
+          // Wait for animation (approx 1.5s - 2s)
+          await new Promise(r => setTimeout(r, 2000));
 
-      // Calculate Move
-      const currentPos = activePlayer.position;
-      let targetPos = currentPos + roll;
+          // Calculate Move
+          const currentPos = activePlayer.position;
+          let targetPos = currentPos + roll;
 
-      if (targetPos >= BOARD_SIZE - 1) targetPos = BOARD_SIZE - 1;
-      if (targetPos <= 0) targetPos = 0; // Should not happen on fwd roll
+          if (targetPos >= BOARD_SIZE - 1) targetPos = BOARD_SIZE - 1;
+          if (targetPos <= 0) targetPos = 0; // Should not happen on fwd roll
 
-      // Update Player Position in DB
-      const updatedPlayers = roomState.players.map(p =>
-          p.id === activePlayer.id ? { ...p, position: targetPos } : p
-      );
+          // Update Player Position in DB
+          const updatedPlayers = roomState.players.map(p =>
+              p.id === activePlayer.id ? { ...p, position: targetPos } : p
+          );
 
-      await updateGameState(roomId, {
-          players: updatedPlayers,
-          lastLog: `${activePlayer.name} は ${roll} マス進み、マス ${targetPos} に止まった。`,
-          lastLogTimestamp: Date.now()
-      });
+          await updateGameState(roomId, {
+              players: updatedPlayers,
+              lastLog: `${activePlayer.name} は ${roll} マス進み、マス ${targetPos} に止まった。`,
+              lastLogTimestamp: Date.now()
+          });
 
-      // Dynamic wait time based on distance
-      const dist = Math.abs(targetPos - currentPos);
-      const waitTime = (dist * 500) + 500;
-      await new Promise(r => setTimeout(r, waitTime));
+          // Dynamic wait time based on distance
+          const dist = Math.abs(targetPos - currentPos);
+          const waitTime = (dist * 500) + 500;
+          await new Promise(r => setTimeout(r, waitTime));
 
-      // Handle Effects
-      await handleTileEffect(targetPos, activePlayer, updatedPlayers);
+          // Handle Effects
+          await handleTileEffect(targetPos, activePlayer, updatedPlayers);
+      } finally {
+          setIsProcessingTurn(false);
+      }
   };
 
   const handleTileEffect = async (pos: number, player: Player, currentPlayers: Player[], skipBattleCheck: boolean = false) => {
@@ -283,47 +326,53 @@ const App: React.FC = () => {
   };
 
   const handleApplyEvent = async () => {
-      if (!roomId || !roomState || !roomState.currentEvent) return;
+      if (!roomId || !roomState || !roomState.currentEvent || isProcessingTurn) return;
       const player = roomState.players[roomState.activePlayerIndex];
       // Only active player
       if (player.id !== myPlayerId) return;
 
-      const event = roomState.currentEvent;
-      const val = event.value;
-      let newPlayers = [...roomState.players];
-      let currentPlayer = newPlayers[roomState.activePlayerIndex];
+      setIsProcessingTurn(true);
 
-      // Store original pos to calc distance
-      const originalPos = currentPlayer.position;
+      try {
+          const event = roomState.currentEvent;
+          const val = event.value;
+          let newPlayers = [...roomState.players];
+          let currentPlayer = newPlayers[roomState.activePlayerIndex];
 
-      if (event.effectType === 'MOVE_FORWARD') {
-          currentPlayer.position = Math.min(BOARD_SIZE - 1, currentPlayer.position + val);
-      } else if (event.effectType === 'MOVE_BACK') {
-          currentPlayer.position = Math.max(0, currentPlayer.position - val);
-      } else if (event.effectType === 'SKIP_TURN') {
-          currentPlayer.skipNextTurn = true;
+          // Store original pos to calc distance
+          const originalPos = currentPlayer.position;
+
+          if (event.effectType === 'MOVE_FORWARD') {
+              currentPlayer.position = Math.min(BOARD_SIZE - 1, currentPlayer.position + val);
+          } else if (event.effectType === 'MOVE_BACK') {
+              currentPlayer.position = Math.max(0, currentPlayer.position - val);
+          } else if (event.effectType === 'SKIP_TURN') {
+              currentPlayer.skipNextTurn = true;
+          }
+
+          newPlayers[roomState.activePlayerIndex] = currentPlayer;
+
+          await updateGameState(roomId, {
+              players: newPlayers,
+              currentEvent: null,
+              phase: GamePhase.PLAYING,
+              lastLog: `${player.name} はイベントの結果を受け入れました。`,
+              lastLogTimestamp: Date.now()
+          });
+
+          // Dynamic wait if moved
+          if (event.effectType === 'MOVE_FORWARD' || event.effectType === 'MOVE_BACK') {
+               const dist = Math.abs(currentPlayer.position - originalPos);
+               const waitTime = (dist * 500) + 500;
+               await new Promise(r => setTimeout(r, waitTime));
+          } else {
+               await new Promise(r => setTimeout(r, 1500));
+          }
+
+          await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
+      } finally {
+          setIsProcessingTurn(false);
       }
-
-      newPlayers[roomState.activePlayerIndex] = currentPlayer;
-
-      await updateGameState(roomId, {
-          players: newPlayers,
-          currentEvent: null,
-          phase: GamePhase.PLAYING,
-          lastLog: `${player.name} はイベントの結果を受け入れました。`,
-          lastLogTimestamp: Date.now()
-      });
-
-      // Dynamic wait if moved
-      if (event.effectType === 'MOVE_FORWARD' || event.effectType === 'MOVE_BACK') {
-           const dist = Math.abs(currentPlayer.position - originalPos);
-           const waitTime = (dist * 500) + 500;
-           await new Promise(r => setTimeout(r, waitTime));
-      } else {
-           await new Promise(r => setTimeout(r, 1500));
-      }
-
-      await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
   };
 
   // --- Battle Handlers ---
@@ -358,65 +407,71 @@ const App: React.FC = () => {
   };
 
   const handleBattleEnd = async () => {
-      if (!roomId || !roomState || !roomState.battleState) return;
+      if (!roomId || !roomState || !roomState.battleState || isProcessingTurn) return;
       
       const player = roomState.players[roomState.activePlayerIndex];
       if (player.id !== myPlayerId) return;
+
+      setIsProcessingTurn(true);
       
-      const battleState = roomState.battleState;
-      const isVictory = battleState.result === 'victory';
-      
-      let newPlayers = [...roomState.players];
-      let currentPlayer = { ...newPlayers[roomState.activePlayerIndex] };
-      const originalPos = currentPlayer.position;
-      
-      if (isVictory) {
-          // Add gold reward
-          currentPlayer.gold = (currentPlayer.gold || 0) + battleState.goldEarned;
-          newPlayers[roomState.activePlayerIndex] = currentPlayer;
+      try {
+          const battleState = roomState.battleState;
+          const isVictory = battleState.result === 'victory';
           
-          await updateGameState(roomId, {
-              players: newPlayers,
-              battleState: null,
-              phase: GamePhase.PLAYING,
-              lastLog: `🎉 ${player.name} は ${battleState.monster?.name} を倒し、${battleState.goldEarned}G を獲得！`,
-              lastLogTimestamp: Date.now(),
-              latestPopup: {
-                  message: `🎉 勝利！ +${battleState.goldEarned}G`,
-                  type: 'success',
-                  timestamp: Date.now()
-              }
-          });
+          let newPlayers = [...roomState.players];
+          let currentPlayer = { ...newPlayers[roomState.activePlayerIndex] };
+          const originalPos = currentPlayer.position;
           
-          await new Promise(r => setTimeout(r, 1000));
-          await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
-          
-      } else {
-          // Move player back
-          const newPos = Math.max(0, currentPlayer.position - battleState.tilesBack);
-          currentPlayer.position = newPos;
-          newPlayers[roomState.activePlayerIndex] = currentPlayer;
-          
-          await updateGameState(roomId, {
-              players: newPlayers,
-              battleState: null,
-              phase: GamePhase.PLAYING,
-              lastLog: `💥 ${player.name} は ${battleState.monster?.name} に敗北し、${battleState.tilesBack}マス後退！`,
-              lastLogTimestamp: Date.now(),
-              latestPopup: {
-                  message: `💥 敗北！ ${battleState.tilesBack}マス後退`,
-                  type: 'danger',
-                  timestamp: Date.now()
-              }
-          });
-          
-          // Wait for movement animation
-          const dist = Math.abs(newPos - originalPos);
-          const waitTime = (dist * 500) + 500;
-          await new Promise(r => setTimeout(r, waitTime));
-          
-          // After damage movement, do NOT trigger tile effects (skip battle check)
-          await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
+          if (isVictory) {
+              // Add gold reward
+              currentPlayer.gold = (currentPlayer.gold || 0) + battleState.goldEarned;
+              newPlayers[roomState.activePlayerIndex] = currentPlayer;
+
+              await updateGameState(roomId, {
+                  players: newPlayers,
+                  battleState: null,
+                  phase: GamePhase.PLAYING,
+                  lastLog: `🎉 ${player.name} は ${battleState.monster?.name} を倒し、${battleState.goldEarned}G を獲得！`,
+                  lastLogTimestamp: Date.now(),
+                  latestPopup: {
+                      message: `🎉 勝利！ +${battleState.goldEarned}G`,
+                      type: 'success',
+                      timestamp: Date.now()
+                  }
+              });
+
+              await new Promise(r => setTimeout(r, 1000));
+              await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
+
+          } else {
+              // Move player back
+              const newPos = Math.max(0, currentPlayer.position - battleState.tilesBack);
+              currentPlayer.position = newPos;
+              newPlayers[roomState.activePlayerIndex] = currentPlayer;
+
+              await updateGameState(roomId, {
+                  players: newPlayers,
+                  battleState: null,
+                  phase: GamePhase.PLAYING,
+                  lastLog: `💥 ${player.name} は ${battleState.monster?.name} に敗北し、${battleState.tilesBack}マス後退！`,
+                  lastLogTimestamp: Date.now(),
+                  latestPopup: {
+                      message: `💥 敗北！ ${battleState.tilesBack}マス後退`,
+                      type: 'danger',
+                      timestamp: Date.now()
+                  }
+              });
+
+              // Wait for movement animation
+              const dist = Math.abs(newPos - originalPos);
+              const waitTime = (dist * 500) + 500;
+              await new Promise(r => setTimeout(r, waitTime));
+
+              // After damage movement, do NOT trigger tile effects (skip battle check)
+              await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
+          }
+      } finally {
+          setIsProcessingTurn(false);
       }
   };
 
@@ -642,7 +697,7 @@ const App: React.FC = () => {
          {/* --- MAIN ACTION WINDOW (Only when needed) --- */}
 
          {/* 1. Dice Roll Window */}
-         {roomState.phase === GamePhase.PLAYING && isMyTurn && !isRolling && (
+         {roomState.phase === GamePhase.PLAYING && isMyTurn && !isRolling && !isProcessingTurn && !isBoardBusy && (
              <div className="pointer-events-auto bg-slate-900/90 backdrop-blur-xl border border-indigo-500/50 rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-slide-up relative overflow-hidden">
                 {/* Decorative glow */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
