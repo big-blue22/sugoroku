@@ -34,17 +34,36 @@ const BattleModal: React.FC<BattleModalProps> = ({
         {/* Main Content Area */}
         <div className="p-8 text-center">
 
-            {/* 1. Rolling State (Highest Priority) */}
+            {/* Monster Display (Visible during Action, Rolling, and Defeat) */}
+            {(isRolling || !showResult || !isVictory) && (
+                <div className="flex flex-col items-center">
+                    {/* Monster Name (Top) */}
+                    <h2 className="text-2xl font-bold text-white mb-6 tracking-wider">
+                        {monster.name}
+                    </h2>
+
+                    {/* Monster Image (Center) */}
+                    <div className="relative mb-10">
+                        {/* Glow effect behind emoji */}
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-red-500/20 rounded-full blur-xl animate-pulse"></div>
+                        <div className="text-9xl relative z-10 filter drop-shadow-2xl transform hover:scale-110 transition-transform duration-300">
+                            {monster.emoji}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 1. Rolling State */}
             {isRolling ? (
-                <div className="py-8">
+                <div className="py-8 animate-fade-in">
                     <div className="text-6xl animate-bounce mb-6">🎲</div>
                     <p className="text-xl font-bold text-white animate-pulse">
                         サイコロをふっています（戦闘中）
                     </p>
                 </div>
             ) : showResult ? (
-                /* 2. Result State (Only if NOT rolling) */
-                <div className={`py-4 rounded-xl ${isVictory ? 'bg-green-900/20' : 'bg-red-900/20'}`}>
+                /* 2. Result State */
+                <div className={`py-4 rounded-xl ${isVictory ? 'bg-green-900/20' : 'bg-red-900/20'} animate-fade-in`}>
                     <div className="text-6xl mb-4">{isVictory ? '🎉' : '💥'}</div>
 
                     <div className="mb-6">
@@ -80,22 +99,8 @@ const BattleModal: React.FC<BattleModalProps> = ({
                     )}
                 </div>
             ) : (
-                /* 3. Action State (Initial) */
+                /* 3. Action State (Initial) - Button Only (Monster is handled above) */
                 <div className="flex flex-col items-center">
-                    {/* Monster Name (Top) */}
-                    <h2 className="text-2xl font-bold text-white mb-6 tracking-wider">
-                        {monster.name}
-                    </h2>
-
-                    {/* Monster Image (Center) */}
-                    <div className="relative mb-10">
-                        {/* Glow effect behind emoji */}
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-red-500/20 rounded-full blur-xl animate-pulse"></div>
-                        <div className="text-9xl relative z-10 filter drop-shadow-2xl transform hover:scale-110 transition-transform duration-300">
-                            {monster.emoji}
-                        </div>
-                    </div>
-
                     {/* Action Button */}
                     {isMyTurn ? (
                         <button
