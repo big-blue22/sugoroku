@@ -3,8 +3,10 @@ import { GamePhase, Player, Tile, TileType, RoomState, BattleState, Monster } fr
 import SetupScreen from './components/SetupScreen';
 import Popup, { PopupType } from './components/Popup';
 import BattleModal from './components/BattleModal';
+import BossBattleOverlay from './components/BossBattleOverlay';
 import GameScene from './components/3d/GameScene';
 import { generateGameEvent } from './services/gameService';
+import { simulateBattle, BOSS_CONFIG } from './services/bossService';
 import {
     subscribeToRoom,
     startGame,
@@ -50,6 +52,8 @@ const App: React.FC = () => {
 
   // Battle State
   const [isBattleRolling, setIsBattleRolling] = useState(false);
+  const [showBossOverlay, setShowBossOverlay] = useState(false);
+  const [bossBattleResult, setBossBattleResult] = useState<any>(null); // Using any to avoid complex import circulars for now, or just implicit
 
   // Derived State (local caching of animations)
   const [localDiceValue, setLocalDiceValue] = useState<number | null>(null);
@@ -256,6 +260,20 @@ const App: React.FC = () => {
           return;
       }
 
+      // 1. Boss Trigger Check (Tile 40 - End of Fairy Palace)
+      // Index 40 is the 41st tile. Fairy Palace is 21-40. So index 40 is correct.
+      if (!skipBattleCheck && pos === 40 && roomState?.bossState && !roomState.bossState.isDefeated) {
+          // Trigger Boss Battle locally
+          const result = simulateBattle(roomState.bossState, player.name);
+          setBossBattleResult(result);
+          setShowBossOverlay(true);
+
+          // Note: We don't update Firestore immediately to 'BATTLE' phase because
+          // this is a simulated local playback overlay.
+          // Ideally we should lock the game, but since we are the active player, we just don't call nextTurn yet.
+          return;
+      }
+
       // Skip battle check if player was moved here from damage (to prevent infinite loops)
       if (!skipBattleCheck) {
           // Check for battle encounter based on tile type
@@ -376,6 +394,81 @@ const App: React.FC = () => {
           await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
       } finally {
           setIsProcessingTurn(false);
+      }
+  };
+
+  const handleBossBattleComplete = async () => {
+      if (!roomId || !roomState || !bossBattleResult) return;
+      setShowBossOverlay(false);
+
+      const player = roomState.players[roomState.activePlayerIndex];
+      const result = bossBattleResult; // BattleResult
+
+      setIsProcessingTurn(true);
+
+      try {
+          // 1. Update Boss State Global
+          await updateGameState(roomId, {
+              bossState: result.finalBossState,
+              lastLog: result.isVictory
+                  ? `🏆 ${player.name} は ${BOSS_CONFIG.name} を撃破した！`
+                  : `⚠️ ${player.name} は ${BOSS_CONFIG.name} に敗北した...`
+          });
+
+          // 2. Handle Player Result
+          let newPlayers = [...roomState.players];
+          let currentPlayer = { ...newPlayers[roomState.activePlayerIndex] };
+
+          if (result.isVictory) {
+              currentPlayer.gold = (currentPlayer.gold || 0) + result.goldReward;
+              newPlayers[roomState.activePlayerIndex] = currentPlayer;
+
+              await updateGameState(roomId, {
+                  players: newPlayers,
+                  latestPopup: {
+                      message: `🏆 BOSS撃破！ +${result.goldReward}G`,
+                      type: 'success',
+                      timestamp: Date.now()
+                  }
+              });
+
+              await new Promise(r => setTimeout(r, 1000));
+              await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
+          } else {
+              // Move Back
+              if (result.stepsBack > 0) {
+                  const originalPos = currentPlayer.position;
+                  const newPos = Math.max(0, currentPlayer.position - result.stepsBack);
+                  currentPlayer.position = newPos;
+                  newPlayers[roomState.activePlayerIndex] = currentPlayer;
+
+                  await updateGameState(roomId, {
+                      players: newPlayers,
+                      latestPopup: {
+                          message: `💥 ${result.stepsBack}マス 吹き飛ばされた！`,
+                          type: 'danger',
+                          timestamp: Date.now()
+                      }
+                  });
+
+                  // Wait for movement
+                  const dist = Math.abs(newPos - originalPos);
+                  const waitTime = (dist * 500) + 500;
+                  await new Promise(r => setTimeout(r, waitTime));
+
+                  // Skip effects on landing
+                  await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
+              } else {
+                  // Just end turn if no damage (e.g. somehow loop ended without pushback?)
+                  // Logic says stepsBack is always > 0 if not victory.
+                  await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
+              }
+          }
+      } catch(err) {
+          console.error(err);
+      } finally {
+          setIsProcessingTurn(false);
+          setBossBattleResult(null);
       }
   };
 
@@ -551,6 +644,16 @@ const App: React.FC = () => {
         type={popupData?.type || 'info'} 
         isVisible={showPopup} 
       />
+
+      {/* --- Boss Battle Overlay --- */}
+      {showBossOverlay && bossBattleResult && (
+          <BossBattleOverlay
+              battleResult={bossBattleResult}
+              player={activePlayer}
+              onComplete={handleBossBattleComplete}
+              initialBossHp={roomState.bossState?.currentHp || 20}
+          />
+      )}
 
       {/* --- Battle Modal --- */}
       <BattleModal
