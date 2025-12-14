@@ -98,43 +98,43 @@ export const ZONES: ZoneConfig[] = [
     name: '草原',
     start: 0, end: 20,
     themeId: 'grass',
-    tileDistribution: { normal: 0.6, good: 0.2, bad: 0.1, event: 0.1 }
+    tileDistribution: { normal: 0.7, good: 0.2, bad: 0.1, event: 0.0 }
   },
   {
     name: '妖精の宮殿',
     start: 21, end: 40,
     themeId: 'fairy',
-    tileDistribution: { normal: 0.4, good: 0.4, bad: 0.05, event: 0.15 } // Bonus heavy
+    tileDistribution: { normal: 0.55, good: 0.4, bad: 0.05, event: 0.0 } // Bonus heavy
   },
   {
     name: 'マグマ洞窟',
     start: 41, end: 70,
     themeId: 'magma',
-    tileDistribution: { normal: 0.4, good: 0.1, bad: 0.4, event: 0.1 } // Trap heavy
+    tileDistribution: { normal: 0.5, good: 0.1, bad: 0.4, event: 0.0 } // Trap heavy
   },
   {
     name: '海中のほこら',
     start: 71, end: 100,
     themeId: 'underwater',
-    tileDistribution: { normal: 0.5, good: 0.2, bad: 0.1, event: 0.2 } // Balanced
+    tileDistribution: { normal: 0.7, good: 0.2, bad: 0.1, event: 0.0 } // Balanced
   },
   {
     name: '洞窟',
     start: 101, end: 130,
     themeId: 'cave',
-    tileDistribution: { normal: 0.4, good: 0.15, bad: 0.3, event: 0.15 } // Slightly hard
+    tileDistribution: { normal: 0.55, good: 0.15, bad: 0.3, event: 0.0 } // Slightly hard
   },
   {
     name: 'ロンダルキア',
     start: 131, end: 170,
     themeId: 'rhone',
-    tileDistribution: { normal: 0.3, good: 0.1, bad: 0.5, event: 0.1 } // Very hard (Traps)
+    tileDistribution: { normal: 0.4, good: 0.1, bad: 0.5, event: 0.0 } // Very hard (Traps)
   },
   {
     name: 'ハーゴンの教会',
     start: 171, end: 216,
     themeId: 'hargon',
-    tileDistribution: { normal: 0.3, good: 0.05, bad: 0.4, event: 0.25 } // Hard + Events
+    tileDistribution: { normal: 0.55, good: 0.05, bad: 0.4, event: 0.0 } // Hard + Events
   }
 ];
 
