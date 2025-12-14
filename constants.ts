@@ -134,7 +134,7 @@ export const ZONES: ZoneConfig[] = [
     name: 'ハーゴンの教会',
     start: 171, end: 216,
     themeId: 'hargon',
-    tileDistribution: { normal: 0.55, good: 0.05, bad: 0.4, event: 0.0 } // Hard + Events
+    tileDistribution: { normal: 1.0, good: 0.0, bad: 0.0, event: 0.0 } // Normal only
   }
 ];
 
