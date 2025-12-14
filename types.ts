@@ -38,7 +38,7 @@ export interface Monster {
   isSpecialAttack?: boolean; // For special attack calculation (e.g., Killer Machine)
 }
 
-// Battle State
+// Battle State (Regular Monsters)
 export interface BattleState {
   isActive: boolean;
   monster: Monster | null;
@@ -60,6 +60,14 @@ export interface GameEvent {
   description: string;
   effectType: 'MOVE_FORWARD' | 'MOVE_BACK' | 'SKIP_TURN' | 'NOTHING';
   value: number;
+}
+
+// --- Boss Battle Types ---
+export interface BossState {
+  currentHp: number;
+  maxHp: number;
+  isDefeated: boolean;
+  isSkaraActive: boolean; // 0.5x damage taken
 }
 
 // --- Firebase / Multiplayer Types ---
@@ -84,6 +92,9 @@ export interface RoomState {
 
   // Battle State
   battleState?: BattleState | null;
+
+  // Boss State (Global Persistence)
+  bossState?: BossState;
 
   // Logs
   lastLog: string | null; // Latest log message to append
