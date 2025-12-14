@@ -215,6 +215,18 @@ const App: React.FC = () => {
           const currentPos = activePlayer.position;
           let targetPos = currentPos + roll;
 
+          // BOSS BARRIER LOGIC
+          // Tile 40 is Belial. If Boss is alive, players cannot pass Tile 40.
+          const BOSS_TILE_INDEX = 40;
+          let isBlockedByBoss = false;
+
+          if (roomState.bossState && !roomState.bossState.isDefeated) {
+              if (currentPos < BOSS_TILE_INDEX && targetPos > BOSS_TILE_INDEX) {
+                  targetPos = BOSS_TILE_INDEX;
+                  isBlockedByBoss = true;
+              }
+          }
+
           if (targetPos >= BOARD_SIZE - 1) targetPos = BOARD_SIZE - 1;
           if (targetPos <= 0) targetPos = 0; // Should not happen on fwd roll
 
@@ -223,9 +235,14 @@ const App: React.FC = () => {
               p.id === activePlayer.id ? { ...p, position: targetPos } : p
           );
 
+          let logMessage = `${activePlayer.name} は ${roll} マス進み、マス ${targetPos} に止まった。`;
+          if (isBlockedByBoss) {
+              logMessage = `${activePlayer.name} はベリアルの結界に阻まれ、マス ${targetPos} で止まった！`;
+          }
+
           await updateGameState(roomId, {
               players: updatedPlayers,
-              lastLog: `${activePlayer.name} は ${roll} マス進み、マス ${targetPos} に止まった。`,
+              lastLog: logMessage,
               lastLogTimestamp: Date.now()
           });
 
