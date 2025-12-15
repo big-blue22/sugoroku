@@ -218,12 +218,11 @@ const App: React.FC = () => {
           // BOSS BARRIER LOGIC
           // Tile 40 is Belial. If Boss is alive, players cannot pass Tile 40.
           const BOSS_TILE_INDEX = 40;
-          let isBlockedByBoss = false;
 
           if (roomState.bossState && !roomState.bossState.isDefeated) {
-              if (currentPos < BOSS_TILE_INDEX && targetPos > BOSS_TILE_INDEX) {
+              // Simply check if targetPos exceeds the boss tile
+              if (targetPos > BOSS_TILE_INDEX) {
                   targetPos = BOSS_TILE_INDEX;
-                  isBlockedByBoss = true;
               }
           }
 
@@ -236,9 +235,6 @@ const App: React.FC = () => {
           );
 
           let logMessage = `${activePlayer.name} は ${roll} マス進み、マス ${targetPos} に止まった。`;
-          if (isBlockedByBoss) {
-              logMessage = `${activePlayer.name} はベリアルの結界に阻まれ、マス ${targetPos} で止まった！`;
-          }
 
           await updateGameState(roomId, {
               players: updatedPlayers,
