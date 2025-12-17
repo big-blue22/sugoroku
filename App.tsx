@@ -6,7 +6,7 @@ import BattleModal from './components/BattleModal';
 import BossBattleOverlay from './components/BossBattleOverlay';
 import GameScene from './components/3d/GameScene';
 import { generateGameEvent } from './services/gameService';
-import { simulateBattle, BOSS_CONFIG } from './services/bossService';
+import { BOSS_CONFIG } from './services/bossService';
 import {
     subscribeToRoom,
     startGame,
@@ -277,13 +277,9 @@ const App: React.FC = () => {
       // Index 40 is the 41st tile. Fairy Palace is 21-40. So index 40 is correct.
       if (!skipBattleCheck && pos === 40 && roomState?.bossState && !roomState.bossState.isDefeated) {
           // Trigger Boss Battle locally
-          const result = simulateBattle(roomState.bossState, player.name);
-          setBossBattleResult(result);
+          // We no longer simulate in advance. We just open the overlay with current state.
+          // The overlay will handle the turns and return a result object when closed.
           setShowBossOverlay(true);
-
-          // Note: We don't update Firestore immediately to 'BATTLE' phase because
-          // this is a simulated local playback overlay.
-          // Ideally we should lock the game, but since we are the active player, we just don't call nextTurn yet.
           return;
       }
 
@@ -410,12 +406,12 @@ const App: React.FC = () => {
       }
   };
 
-  const handleBossBattleComplete = async () => {
-      if (!roomId || !roomState || !bossBattleResult) return;
+  const handleBossBattleComplete = async (result: any) => {
+      if (!roomId || !roomState) return;
       setShowBossOverlay(false);
 
       const player = roomState.players[roomState.activePlayerIndex];
-      const result = bossBattleResult; // BattleResult
+      // const result = bossBattleResult; // Replaced by argument
 
       setIsProcessingTurn(true);
 
@@ -659,12 +655,19 @@ const App: React.FC = () => {
       />
 
       {/* --- Boss Battle Overlay --- */}
-      {showBossOverlay && bossBattleResult && (
+      {showBossOverlay && (
           <BossBattleOverlay
-              battleResult={bossBattleResult}
+              initialBossState={roomState.bossState || {
+                  currentHp: 20,
+                  maxHp: 20,
+                  isDefeated: false,
+                  isSkaraActive: false
+              }}
               player={activePlayer}
-              onComplete={handleBossBattleComplete}
-              initialBossHp={roomState.bossState?.currentHp || 20}
+              onComplete={(result) => {
+                  setBossBattleResult(result);
+                  handleBossBattleComplete(result);
+              }}
           />
       )}
 
