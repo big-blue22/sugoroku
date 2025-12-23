@@ -93,7 +93,8 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
       currentHp: 20,
       maxHp: 20,
       isDefeated: false,
-      isSkaraActive: false
+      isSkaraActive: false,
+      logs: []
     },
     lastLog: `🏁 ルーム ${roomId} が作成されました！`,
     lastLogTimestamp: Date.now()

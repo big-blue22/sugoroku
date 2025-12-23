@@ -8,74 +8,139 @@ interface Dice2DProps {
   size?: number;
 }
 
-const Dice2D: React.FC<Dice2DProps> = ({ value, isRolling, onRollComplete, trigger, size = 60 }) => {
-  const [displayValue, setDisplayValue] = useState(1);
-  const [animating, setAnimating] = useState(false);
+const Dice2D: React.FC<Dice2DProps> = ({ value, isRolling, onRollComplete, trigger, size = 80 }) => {
+  const [rotation, setRotation] = useState({ x: 0, y: 0 });
+  const [isSpinning, setIsSpinning] = useState(false);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (trigger) {
-      setAnimating(true);
-      let count = 0;
-      const interval = setInterval(() => {
-        setDisplayValue(Math.floor(Math.random() * 6) + 1);
-        count++;
-        if (count > 10) { // Roll for approx 1s (10 * 100ms)
-          clearInterval(interval);
-          setAnimating(false);
-          setDisplayValue(value); // Set final value
-          if (onRollComplete) onRollComplete(value);
-        }
-      }, 100);
-      return () => clearInterval(interval);
-    }
-  }, [trigger, value, onRollComplete]);
+      setIsSpinning(true);
+      // Spin randomly first
+      setRotation({
+          x: Math.floor(Math.random() * 360 * 5),
+          y: Math.floor(Math.random() * 360 * 5)
+      });
 
-  // Dot positions
-  const getDots = (val: number) => {
-    switch (val) {
-      case 1: return [{ x: 50, y: 50, color: 'red', size: 25 }];
-      case 2: return [{ x: 20, y: 20 }, { x: 80, y: 80 }];
-      case 3: return [{ x: 20, y: 20 }, { x: 50, y: 50 }, { x: 80, y: 80 }];
-      case 4: return [{ x: 20, y: 20 }, { x: 80, y: 20 }, { x: 20, y: 80 }, { x: 80, y: 80 }];
-      case 5: return [{ x: 20, y: 20 }, { x: 80, y: 20 }, { x: 50, y: 50 }, { x: 20, y: 80 }, { x: 80, y: 80 }];
-      case 6: return [{ x: 20, y: 20 }, { x: 80, y: 20 }, { x: 20, y: 50 }, { x: 80, y: 50 }, { x: 20, y: 80 }, { x: 80, y: 80 }];
-      default: return [];
+      // After 1s, settle to final value
+      timer = setTimeout(() => {
+          setIsSpinning(false);
+          const finalRot = getRotationForValue(value);
+
+          setRotation({
+              x: finalRot.x + 720,
+              y: finalRot.y + 720
+          });
+
+          if (onRollComplete) {
+              onRollComplete(value);
+          }
+      }, 1000);
     }
+    return () => clearTimeout(timer);
+  }, [trigger, value]); // Added value to dependency, onRollComplete is stable (usually)
+
+  // Map dice value to rotation (x, y)
+  const getRotationForValue = (val: number) => {
+      switch(val) {
+          case 1: return { x: 0, y: 0 };
+          case 6: return { x: 180, y: 0 };
+          case 2: return { x: 0, y: -90 };
+          case 5: return { x: 0, y: 90 };
+          case 3: return { x: -90, y: 0 };
+          case 4: return { x: 90, y: 0 };
+          default: return { x: 0, y: 0 };
+      }
   };
 
-  const dots = getDots(animating ? displayValue : value); // Use final value if not animating, but ensure displayValue is sync if just rendered static
+  const faceStyle = (i: number) => {
+    // Scale translateZ based on size. Default 80px size -> 40px Z
+    const translateZ = size / 2;
+    const baseTransforms = [
+        `translateZ(${translateZ}px)`, // 1
+        `rotateY(-90deg) translateZ(${translateZ}px)`, // 2
+        `rotateX(90deg) translateZ(${translateZ}px)`, // 3
+        `rotateX(-90deg) translateZ(${translateZ}px)`, // 4
+        `rotateY(90deg) translateZ(${translateZ}px)`, // 5
+        `rotateY(180deg) translateZ(${translateZ}px)` // 6
+    ];
 
-  // If not animating and trigger is false, just show value.
-  // Actually, displayValue tracks animation state.
-  const currentVal = animating ? displayValue : value;
-  const currentDots = getDots(currentVal);
-
-  return (
-    <div
-      className="bg-white rounded-xl shadow-xl flex relative border border-slate-300"
-      style={{
+    return {
         width: size,
         height: size,
-        transform: animating ? 'rotate(360deg)' : 'rotate(0deg)',
-        transition: 'transform 0.5s ease-in-out'
-      }}
-    >
-      {currentDots.map((dot, i) => (
+        position: 'absolute' as 'absolute',
+        border: '2px solid #ccc',
+        background: 'white',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontSize: size * 0.5,
+        fontWeight: 'bold',
+        transform: baseTransforms[i-1],
+        boxShadow: 'inset 0 0 10px rgba(0,0,0,0.1)',
+        borderRadius: size * 0.15
+    };
+  };
+
+  return (
+    <div style={{ perspective: '1000px', width: size, height: size }}>
         <div
-          key={i}
-          className="absolute rounded-full"
-          style={{
-            left: `${dot.x}%`,
-            top: `${dot.y}%`,
-            width: `${dot.size || 18}%`,
-            height: `${dot.size || 18}%`,
-            backgroundColor: dot.color || 'black',
-            transform: 'translate(-50%, -50%)'
-          }}
-        />
-      ))}
+            style={{
+                width: '100%',
+                height: '100%',
+                position: 'relative',
+                transformStyle: 'preserve-3d',
+                transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
+                transition: 'transform 1s cubic-bezier(0.25, 0.1, 0.25, 1)'
+            }}
+        >
+            {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} style={faceStyle(i)}>
+                    {DotFace(i, size)}
+                </div>
+            ))}
+        </div>
     </div>
   );
 };
+
+const DotFace = (val: number, size: number) => {
+    const dotSize = size * 0.2;
+    type DotPos = { top: string; left: string };
+
+    const positions: Record<number, DotPos[]> = {
+        1: [{top: '50%', left: '50%'}],
+        2: [{top: '25%', left: '25%'}, {top: '75%', left: '75%'}],
+        3: [{top: '25%', left: '25%'}, {top: '50%', left: '50%'}, {top: '75%', left: '75%'}],
+        4: [{top: '25%', left: '25%'}, {top: '25%', left: '75%'}, {top: '75%', left: '25%'}, {top: '75%', left: '75%'}],
+        5: [{top: '25%', left: '25%'}, {top: '25%', left: '75%'}, {top: '50%', left: '50%'}, {top: '75%', left: '25%'}, {top: '75%', left: '75%'}],
+        6: [{top: '25%', left: '25%'}, {top: '25%', left: '75%'}, {top: '50%', left: '25%'}, {top: '50%', left: '75%'}, {top: '75%', left: '25%'}, {top: '75%', left: '75%'}]
+    };
+
+    // Japanese Dice: 1 is Red and larger
+    const isOne = val === 1;
+    const color = isOne ? 'red' : 'black';
+    const actualDotSize = isOne ? dotSize * 1.5 : dotSize;
+
+    const dots = positions[val] || [];
+
+    return (
+        <div style={{width: '100%', height: '100%', position: 'relative'}}>
+            {dots.map((pos, idx) => (
+                <div key={idx} style={{
+                    position: 'absolute',
+                    top: pos.top,
+                    left: pos.left,
+                    width: actualDotSize,
+                    height: actualDotSize,
+                    backgroundColor: color,
+                    borderRadius: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.3)'
+                }}></div>
+            ))}
+        </div>
+    );
+}
 
 export default Dice2D;

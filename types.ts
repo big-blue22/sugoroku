@@ -63,11 +63,22 @@ export interface GameEvent {
 }
 
 // --- Boss Battle Types ---
+export interface BossLog {
+  turn: number;
+  actor: 'player' | 'boss';
+  action: string;
+  value?: number; // Damage or Heal amount
+  description: string;
+  currentBossHp?: number; // Snapshot for UI
+  isCritical?: boolean;
+}
+
 export interface BossState {
   currentHp: number;
   maxHp: number;
   isDefeated: boolean;
   isSkaraActive: boolean; // 0.5x damage taken
+  logs: BossLog[];
 }
 
 // --- Firebase / Multiplayer Types ---
