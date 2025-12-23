@@ -661,7 +661,8 @@ const App: React.FC = () => {
                   currentHp: 20,
                   maxHp: 20,
                   isDefeated: false,
-                  isSkaraActive: false
+                  isSkaraActive: false,
+                  logs: []
               }}
               player={activePlayer}
               onComplete={(result) => {

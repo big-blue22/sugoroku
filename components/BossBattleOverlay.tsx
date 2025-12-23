@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BOSS_CONFIG, BattleResult, BossLog, resolvePlayerAttack, resolveBossAction } from '../services/bossService';
-import { BossState, Player } from '../types';
+import { BOSS_CONFIG, BattleResult, resolvePlayerAttack, resolveBossAction } from '../services/bossService';
+import { BossState, Player, BossLog } from '../types';
 import Dice2D from './Dice2D';
 
 interface BossBattleOverlayProps {
@@ -16,7 +16,7 @@ const BossBattleOverlay: React.FC<BossBattleOverlayProps> = ({ initialBossState,
 
   // Local Battle State
   const [bossState, setBossState] = useState<BossState>({ ...initialBossState });
-  const [logs, setLogs] = useState<BossLog[]>([]);
+  const [logs, setLogs] = useState<BossLog[]>(initialBossState.logs || []);
   const [turnCount, setTurnCount] = useState(1);
   const [lastDiceValue, setLastDiceValue] = useState<number | null>(null);
   const [stepsBack, setStepsBack] = useState(0);
@@ -102,8 +102,9 @@ const BossBattleOverlay: React.FC<BossBattleOverlayProps> = ({ initialBossState,
   };
 
   const handleClose = () => {
+      const finalState = { ...bossState, logs: logs };
       const result: BattleResult = {
-          finalBossState: bossState,
+          finalBossState: finalState,
           logs: logs,
           isVictory: isVictory,
           stepsBack: stepsBack,

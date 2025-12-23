@@ -1,4 +1,4 @@
-import { BossState, GameEvent } from '../types';
+import { BossState, GameEvent, BossLog } from '../types';
 
 export const BOSS_CONFIG = {
   name: '悪霊の神々 ベリアル',
@@ -11,16 +11,6 @@ export const BOSS_CONFIG = {
     skara: { name: 'スカラ', chance: 0.20 },
   }
 };
-
-export interface BossLog {
-  turn: number;
-  actor: 'player' | 'boss';
-  action: string;
-  value?: number; // Damage or Heal amount
-  description: string;
-  currentBossHp?: number; // Snapshot for UI
-  isCritical?: boolean;
-}
 
 export interface BattleResult {
   finalBossState: BossState;
