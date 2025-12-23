@@ -81,13 +81,12 @@ const BossBattleOverlay: React.FC<BossBattleOverlayProps> = ({ initialBossState,
 
   const handleRollComplete = (value: number) => {
       // value here matches lastDiceValue passed to Dice2D
-      // Wait a moment after roll finishes before processing
-      setTimeout(() => {
-          const result = resolvePlayerAttack(bossState, value, player.name, turnCount);
-          setBossState(result.newState);
-          setLogs(prev => [...prev, ...result.logs]);
-          setPhase('PLAYER_RESULT');
-      }, 500);
+      // The Dice2D component now waits for animation to complete before calling this
+
+      const result = resolvePlayerAttack(bossState, value, player.name, turnCount);
+      setBossState(result.newState);
+      setLogs(prev => [...prev, ...result.logs]);
+      setPhase('PLAYER_RESULT');
   };
 
   const handleBossAction = () => {
@@ -176,7 +175,8 @@ const BossBattleOverlay: React.FC<BossBattleOverlayProps> = ({ initialBossState,
           <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent p-4 pt-12 flex flex-col items-center justify-center min-h-[120px]">
 
               {/* Player Turn: Roll Button or Dice Animation */}
-              {(phase === 'PLAYER_TURN' || phase === 'PLAYER_ROLLING') && (
+              {/* Keep Dice2D visible during RESULT phase so players see what they rolled */}
+              {(phase === 'PLAYER_TURN' || phase === 'PLAYER_ROLLING' || phase === 'PLAYER_RESULT') && (
                   <div className="w-full flex justify-center">
                       <Dice2D
                           isRolling={phase === 'PLAYER_ROLLING'}

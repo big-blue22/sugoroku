@@ -13,40 +13,71 @@ const Dice2D: React.FC<Dice2DProps> = ({ value, isRolling, onRollComplete, trigg
   const [isSpinning, setIsSpinning] = useState(false);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let spinTimer: NodeJS.Timeout;
+    let completeTimer: NodeJS.Timeout;
+
     if (trigger) {
       setIsSpinning(true);
-      // Spin randomly first
-      setRotation({
-          x: Math.floor(Math.random() * 360 * 5),
-          y: Math.floor(Math.random() * 360 * 5)
-      });
+      // Spin randomly first (Forward spin)
+      // Start from current rotation + large random amount
+      const currentX = rotation.x;
+      const currentY = rotation.y;
+
+      const spinRot = {
+          x: currentX + 360 * 5 + Math.floor(Math.random() * 360),
+          y: currentY + 360 * 5 + Math.floor(Math.random() * 360)
+      };
+      setRotation(spinRot);
 
       // After 1s, settle to final value
-      timer = setTimeout(() => {
+      spinTimer = setTimeout(() => {
           setIsSpinning(false);
           const finalRot = getRotationForValue(value);
 
+          const targetX = getNextTarget(spinRot.x, finalRot.x);
+          const targetY = getNextTarget(spinRot.y, finalRot.y);
+
           setRotation({
-              x: finalRot.x + 720,
-              y: finalRot.y + 720
+              x: targetX,
+              y: targetY
           });
 
-          if (onRollComplete) {
-              onRollComplete(value);
-          }
+          // Wait for settle animation to finish (1s) before triggering completion
+          completeTimer = setTimeout(() => {
+              if (onRollComplete) {
+                  onRollComplete(value);
+              }
+          }, 1000);
       }, 1000);
     }
-    return () => clearTimeout(timer);
-  }, [trigger, value]); // Added value to dependency, onRollComplete is stable (usually)
+    return () => {
+        clearTimeout(spinTimer);
+        clearTimeout(completeTimer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trigger, value]);
+
+  // Helper to ensure forward rotation to target face
+  const getNextTarget = (current: number, targetBase: number) => {
+      // Find k such that (k * 360 + targetBase) > current
+      // We add +1 to k to ensure at least one full spin or significant movement
+      const k = Math.ceil((current - targetBase) / 360);
+      return (k + 1) * 360 + targetBase;
+  };
 
   // Map dice value to rotation (x, y)
+  // 1: Front (0,0)
+  // 6: Back (180,0) - Rotate X 180
+  // 2: Left -> Need to rotate Y+90 to bring Left to Front
+  // 5: Right -> Need to rotate Y-90 to bring Right to Front
+  // 3: Bottom -> Need to rotate X-90 to bring Bottom to Front
+  // 4: Top -> Need to rotate X+90 to bring Top to Front
   const getRotationForValue = (val: number) => {
       switch(val) {
           case 1: return { x: 0, y: 0 };
           case 6: return { x: 180, y: 0 };
-          case 2: return { x: 0, y: -90 };
-          case 5: return { x: 0, y: 90 };
+          case 2: return { x: 0, y: 90 };  // Fixed: Was -90
+          case 5: return { x: 0, y: -90 }; // Fixed: Was 90
           case 3: return { x: -90, y: 0 };
           case 4: return { x: 90, y: 0 };
           default: return { x: 0, y: 0 };
@@ -58,11 +89,11 @@ const Dice2D: React.FC<Dice2DProps> = ({ value, isRolling, onRollComplete, trigg
     const translateZ = size / 2;
     const baseTransforms = [
         `translateZ(${translateZ}px)`, // 1
-        `rotateY(-90deg) translateZ(${translateZ}px)`, // 2
-        `rotateX(90deg) translateZ(${translateZ}px)`, // 3
-        `rotateX(-90deg) translateZ(${translateZ}px)`, // 4
-        `rotateY(90deg) translateZ(${translateZ}px)`, // 5
-        `rotateY(180deg) translateZ(${translateZ}px)` // 6
+        `rotateY(-90deg) translateZ(${translateZ}px)`, // 2 (Left)
+        `rotateX(90deg) translateZ(${translateZ}px)`, // 3 (Bottom)
+        `rotateX(-90deg) translateZ(${translateZ}px)`, // 4 (Top)
+        `rotateY(90deg) translateZ(${translateZ}px)`, // 5 (Right)
+        `rotateY(180deg) translateZ(${translateZ}px)` // 6 (Back)
     ];
 
     return {
