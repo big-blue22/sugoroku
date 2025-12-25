@@ -6,14 +6,14 @@ import BattleModal from './components/BattleModal';
 import BossBattleOverlay from './components/BossBattleOverlay';
 import GameScene from './components/3d/GameScene';
 import { generateGameEvent } from './services/gameService';
-import { BOSS_CONFIG } from './services/bossService';
+import { BELIAL_CONFIG, BAZUZU_CONFIG, getBossConfig } from './services/bossService';
 import {
     subscribeToRoom,
     startGame,
     updateGameState,
     nextTurn
 } from './services/roomService';
-import { BOARD_LAYOUT, BOARD_SIZE, getMonsterForTile, BATTLE_ENCOUNTER_RATES } from './constants';
+import { BOARD_LAYOUT, BOARD_SIZE, getMonsterForTile, BATTLE_ENCOUNTER_RATES, ITEMS } from './constants';
 
 const buildBoard = (): Tile[] => {
   return BOARD_LAYOUT.map((type, index) => ({
@@ -54,6 +54,9 @@ const App: React.FC = () => {
   const [isBattleRolling, setIsBattleRolling] = useState(false);
   const [showBossOverlay, setShowBossOverlay] = useState(false);
   const [bossBattleResult, setBossBattleResult] = useState<any>(null); // Using any to avoid complex import circulars for now, or just implicit
+
+  // Items State
+  const [showItemModal, setShowItemModal] = useState(false);
 
   // Derived State (local caching of animations)
   const [localDiceValue, setLocalDiceValue] = useState<number | null>(null);
@@ -216,15 +219,26 @@ const App: React.FC = () => {
           let targetPos = currentPos + roll;
 
           // BOSS BARRIER LOGIC
-          // Tile 40 is Belial. If Boss is alive, players cannot pass Tile 40.
-          const BOSS_TILE_INDEX = 40;
-
-          if (roomState.bossState && !roomState.bossState.isDefeated) {
-              // Simply check if targetPos exceeds the boss tile
-              if (targetPos > BOSS_TILE_INDEX) {
-                  targetPos = BOSS_TILE_INDEX;
-              }
+          // 1. Belial (Tile 40)
+          const BELIAL_TILE_INDEX = 40;
+          if (targetPos > BELIAL_TILE_INDEX && roomState.bossState && !roomState.bossState.isDefeated && roomState.bossState.type === 'BELIAL') {
+              targetPos = BELIAL_TILE_INDEX;
           }
+
+          // 2. Bazuzu (Tile 70)
+          const BAZUZU_TILE_INDEX = 70;
+          if (targetPos > BAZUZU_TILE_INDEX && roomState.bossState && !roomState.bossState.isDefeated && roomState.bossState.type === 'BAZUZU') {
+             targetPos = BAZUZU_TILE_INDEX;
+          }
+          // Note: If Belial was defeated, bossState.type is still BELIAL but isDefeated=true.
+          // We need to switch boss state when reaching Tile 70.
+
+          const isBazuzuDefeated = roomState.defeatedBosses?.includes('BAZUZU') || (roomState.bossState?.type === 'BAZUZU' && roomState.bossState?.isDefeated);
+
+          if (targetPos > BAZUZU_TILE_INDEX && !isBazuzuDefeated) {
+              targetPos = BAZUZU_TILE_INDEX;
+          }
+
 
           if (targetPos >= BOARD_SIZE - 1) targetPos = BOARD_SIZE - 1;
           if (targetPos <= 0) targetPos = 0; // Should not happen on fwd roll
@@ -273,15 +287,58 @@ const App: React.FC = () => {
           return;
       }
 
-      // 1. Boss Trigger Check (Tile 40 - End of Fairy Palace)
-      // Index 40 is the 41st tile. Fairy Palace is 21-40. So index 40 is correct.
-      if (!skipBattleCheck && pos === 40 && roomState?.bossState && !roomState.bossState.isDefeated) {
-          // Trigger Boss Battle locally
-          // We no longer simulate in advance. We just open the overlay with current state.
-          // The overlay will handle the turns and return a result object when closed.
-          setShowBossOverlay(true);
-          return;
+      // --- BOSS TRIGGERS ---
+
+      // 1. Belial Trigger (Tile 40)
+      if (!skipBattleCheck && pos === 40) {
+          const isBelialDefeated = roomState?.defeatedBosses?.includes('BELIAL') || (roomState?.bossState?.type === 'BELIAL' && roomState?.bossState?.isDefeated);
+
+          if (!isBelialDefeated) {
+             // Ensure Boss State is Belial
+             if (roomState?.bossState?.type !== 'BELIAL') {
+                 // Reset/Init Belial
+                 await updateGameState(roomId, {
+                     bossState: {
+                         type: 'BELIAL',
+                         currentHp: BELIAL_CONFIG.maxHp,
+                         maxHp: BELIAL_CONFIG.maxHp,
+                         isDefeated: false,
+                         isSkaraActive: false,
+                         logs: []
+                     }
+                 });
+             }
+             setShowBossOverlay(true);
+             return;
+          }
       }
+
+      // 2. Bazuzu Trigger (Tile 70)
+      if (!skipBattleCheck && pos === 70) {
+          const isBazuzuDefeated = roomState?.defeatedBosses?.includes('BAZUZU') || (roomState?.bossState?.type === 'BAZUZU' && roomState?.bossState?.isDefeated);
+
+          if (!isBazuzuDefeated) {
+              // Switch to Bazuzu if not already
+              if (roomState?.bossState?.type !== 'BAZUZU') {
+                  // Init Bazuzu
+                   const initialBazuzuState = {
+                         type: 'BAZUZU' as const,
+                         currentHp: BAZUZU_CONFIG.maxHp,
+                         maxHp: BAZUZU_CONFIG.maxHp,
+                         isDefeated: false,
+                         isSkaraActive: false,
+                         logs: []
+                   };
+
+                   await updateGameState(roomId, {
+                       bossState: initialBazuzuState
+                   });
+              }
+              setShowBossOverlay(true);
+              return;
+          }
+      }
+
 
       // Skip battle check if player was moved here from damage (to prevent infinite loops)
       if (!skipBattleCheck) {
@@ -378,7 +435,7 @@ const App: React.FC = () => {
           } else if (event.effectType === 'MOVE_BACK') {
               currentPlayer.position = Math.max(0, currentPlayer.position - val);
           } else if (event.effectType === 'SKIP_TURN') {
-              currentPlayer.skipNextTurn = true;
+              currentPlayer.turnSkipCount = (currentPlayer.turnSkipCount || 0) + 1;
           }
 
           newPlayers[roomState.activePlayerIndex] = currentPlayer;
@@ -416,17 +473,30 @@ const App: React.FC = () => {
       setIsProcessingTurn(true);
 
       try {
+          const bossConfig = getBossConfig(result.finalBossState.type);
+
           // 1. Update Boss State Global
-          await updateGameState(roomId, {
+          let updates: Partial<RoomState> = {
               bossState: result.finalBossState,
               lastLog: result.isVictory
-                  ? `🏆 ${player.name} は ${BOSS_CONFIG.name} を撃破した！`
-                  : `⚠️ ${player.name} は ${BOSS_CONFIG.name} に敗北した...`
-          });
+                  ? `🏆 ${player.name} は ${bossConfig.name} を撃破した！`
+                  : `⚠️ ${player.name} は ${bossConfig.name} に敗北した...`
+          };
+
+          // If victory, add to defeated list
+          if (result.isVictory) {
+              const currentDefeated = roomState.defeatedBosses || [];
+              if (!currentDefeated.includes(bossConfig.type)) {
+                  updates.defeatedBosses = [...currentDefeated, bossConfig.type];
+              }
+          }
+
+          await updateGameState(roomId, updates);
 
           // 2. Handle Player Result
           let newPlayers = [...roomState.players];
           let currentPlayer = { ...newPlayers[roomState.activePlayerIndex] };
+          let shouldTriggerNextTurn = true;
 
           if (result.isVictory) {
               currentPlayer.gold = (currentPlayer.gold || 0) + result.goldReward;
@@ -442,36 +512,56 @@ const App: React.FC = () => {
               });
 
               await new Promise(r => setTimeout(r, 1000));
-              await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
           } else {
-              // Move Back
-              if (result.stepsBack > 0) {
-                  const originalPos = currentPlayer.position;
-                  const newPos = Math.max(0, currentPlayer.position - result.stepsBack);
-                  currentPlayer.position = newPos;
-                  newPlayers[roomState.activePlayerIndex] = currentPlayer;
-
-                  await updateGameState(roomId, {
-                      players: newPlayers,
-                      latestPopup: {
-                          message: `💥 ${result.stepsBack}マス 吹き飛ばされた！`,
-                          type: 'danger',
-                          timestamp: Date.now()
-                      }
-                  });
-
-                  // Wait for movement
-                  const dist = Math.abs(newPos - originalPos);
-                  const waitTime = (dist * 500) + 500;
-                  await new Promise(r => setTimeout(r, waitTime));
-
-                  // Skip effects on landing
-                  await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
-              } else {
-                  // Just end turn if no damage (e.g. somehow loop ended without pushback?)
-                  // Logic says stepsBack is always > 0 if not victory.
-                  await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
+              // --- HANDLE SPECIAL EFFECTS (Zaraki, Rariho, Mahotone) ---
+              if (result.specialEffect) {
+                  const eff = result.specialEffect;
+                  if (eff.type === 'ZARAKI') {
+                      currentPlayer.position = 0;
+                      await updateGameState(roomId, {
+                        latestPopup: { message: `💀 ザラキで振り出しに戻された！`, type: 'danger', timestamp: Date.now() }
+                      });
+                  } else if (eff.type === 'RARIHO') {
+                      currentPlayer.turnSkipCount = (currentPlayer.turnSkipCount || 0) + (eff.value || 0);
+                      await updateGameState(roomId, {
+                        latestPopup: { message: `💤 ラリホーで${eff.value}ターン休み！`, type: 'danger', timestamp: Date.now() }
+                      });
+                  } else if (eff.type === 'MAHOTONE') {
+                      // Set sealTurns (e.g., 2)
+                      currentPlayer.sealTurns = (currentPlayer.sealTurns || 0) + (eff.value || 0);
+                      await updateGameState(roomId, {
+                        latestPopup: { message: `🤐 マホトーンで封印された！`, type: 'danger', timestamp: Date.now() }
+                      });
+                  }
               }
+
+              // Normal Pushback (if not Zaraki'd already to 0)
+              if (!result.specialEffect || result.specialEffect.type !== 'ZARAKI') {
+                  if (result.stepsBack > 0) {
+                      const originalPos = currentPlayer.position;
+                      const newPos = Math.max(0, currentPlayer.position - result.stepsBack);
+                      currentPlayer.position = newPos;
+
+                      await updateGameState(roomId, {
+                          latestPopup: {
+                              message: `💥 ${result.stepsBack}マス 吹き飛ばされた！`,
+                              type: 'danger',
+                              timestamp: Date.now()
+                          }
+                      });
+
+                      const dist = Math.abs(newPos - originalPos);
+                      const waitTime = (dist * 500) + 500;
+                      await new Promise(r => setTimeout(r, waitTime));
+                  }
+              }
+
+              newPlayers[roomState.activePlayerIndex] = currentPlayer;
+              await updateGameState(roomId, { players: newPlayers });
+          }
+
+          if (shouldTriggerNextTurn) {
+              await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
           }
       } catch(err) {
           console.error(err);
@@ -496,6 +586,13 @@ const App: React.FC = () => {
           const monster = roomState.battleState.monster;
           const isVictory = roll >= monster.hp;
 
+          // Randomize Monster Attack Type (Flavor)
+          const attackTypes = ['physical', 'magic', 'breath'];
+          const randomType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
+          let attackName = "通常攻撃";
+          if (randomType === 'magic') attackName = "魔法攻撃";
+          if (randomType === 'breath') attackName = "ブレス攻撃";
+
           // Update battle state with roll result
           await updateGameState(roomId, {
               battleState: {
@@ -505,7 +602,7 @@ const App: React.FC = () => {
                   goldEarned: isVictory ? monster.goldReward : 0,
                   tilesBack: isVictory ? 0 : monster.attack,
               },
-              lastLog: `🎲 ${player.name} の攻撃！ 出目: ${roll}`,
+              lastLog: `🎲 ${player.name} の攻撃！ 出目: ${roll} -> ${isVictory ? '勝利！' : `敗北... ${monster.name}の${attackName}！`}`,
               lastLogTimestamp: Date.now()
           });
 
@@ -658,6 +755,7 @@ const App: React.FC = () => {
       {showBossOverlay && (
           <BossBattleOverlay
               initialBossState={roomState.bossState || {
+                  type: 'BELIAL',
                   currentHp: 20,
                   maxHp: 20,
                   isDefeated: false,
@@ -690,6 +788,33 @@ const App: React.FC = () => {
         onClose={handleBattleEnd}
         isRolling={isBattleRolling}
       />
+
+      {/* --- Item Modal (Simple) --- */}
+      {showItemModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowItemModal(false)}>
+              <div className="bg-slate-800 border border-slate-600 p-6 rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <h3 className="text-xl font-bold text-white mb-4">持ち物</h3>
+                  <div className="space-y-3">
+                      {ITEMS.map(item => (
+                          <div key={item.id} className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 flex items-center justify-between opacity-50 cursor-not-allowed">
+                              <div>
+                                  <p className="font-bold text-slate-300">{item.name}</p>
+                                  <p className="text-xs text-slate-500">{item.description}</p>
+                              </div>
+                              <button disabled className="px-3 py-1 bg-slate-600 text-slate-400 text-xs rounded">使用</button>
+                          </div>
+                      ))}
+                      <p className="text-center text-xs text-slate-500 mt-4">※ アイテムはまだ持っていません</p>
+                  </div>
+                  <button
+                    onClick={() => setShowItemModal(false)}
+                    className="mt-6 w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 font-bold"
+                  >
+                    閉じる
+                  </button>
+              </div>
+          </div>
+      )}
 
       {/* --- Game Scene (Background) --- */}
       <div className="absolute inset-0 z-0">
@@ -771,7 +896,8 @@ const App: React.FC = () => {
                                   <div className="text-xs text-slate-500 flex items-center gap-2 mt-1">
                                       <span>マス: {p.position}</span>
                                       <span className="text-yellow-400">💰 {p.gold || 0}G</span>
-                                      {p.skipNextTurn && <span className="text-red-400">⚠ 休み</span>}
+                                      {p.turnSkipCount && p.turnSkipCount > 0 ? <span className="text-red-400">💤 休み ({p.turnSkipCount})</span> : null}
+                                      {p.sealTurns > 0 && <span className="text-purple-400">🤐 封印 ({p.sealTurns})</span>}
                                   </div>
                               </div>
                           </div>
@@ -834,16 +960,32 @@ const App: React.FC = () => {
 
                 <div className="text-center mb-4">
                     <h3 className="text-lg font-bold text-white">あなたのターン</h3>
-                    <p className="text-slate-400 text-sm">サイコロを振って進みましょう</p>
+                    <p className="text-slate-400 text-sm">行動を選択してください</p>
                 </div>
 
-                <button
-                    onClick={handleRollDice}
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xl font-bold py-4 rounded-xl shadow-lg transform transition-all active:scale-95 border border-white/10 flex items-center justify-center gap-2"
-                >
-                    <span className="text-2xl">🎲</span>
-                    サイコロを振る
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={handleRollDice}
+                        className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-lg font-bold py-4 rounded-xl shadow-lg transform transition-all active:scale-95 border border-white/10 flex items-center justify-center gap-2"
+                    >
+                        <span className="text-2xl">🎲</span>
+                        サイコロ
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            if (activePlayer.sealTurns && activePlayer.sealTurns > 0) {
+                                triggerPopup('封印されているためアイテムを使えません！', 'danger');
+                            } else {
+                                setShowItemModal(true);
+                            }
+                        }}
+                        className={`flex-none w-20 ${activePlayer.sealTurns && activePlayer.sealTurns > 0 ? 'bg-slate-700 grayscale cursor-not-allowed opacity-50' : 'bg-slate-700 hover:bg-slate-600'} text-white font-bold rounded-xl shadow-lg transition-all active:scale-95 border border-white/10 flex flex-col items-center justify-center p-2`}
+                    >
+                         <span className="text-xl">🎒</span>
+                         <span className="text-[10px]">アイテム</span>
+                    </button>
+                </div>
              </div>
          )}
 

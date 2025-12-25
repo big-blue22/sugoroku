@@ -13,6 +13,12 @@ export const PLAYER_COLORS = [
 
 export const AVATARS = ['🐶', '🐱', '🦊', '🐼', '🐸', '🦁', '🐯', '🦄'];
 
+// Future Item System
+export const ITEMS = [
+    { id: 'potion', name: 'やくそう', description: 'HPを回復する（未実装）' },
+    { id: 'antidote', name: 'どくけしそう', description: '毒を治す（未実装）' }
+];
+
 // Monster data for each zone
 export const MONSTERS: Record<string, Monster> = {
   SLIME: {

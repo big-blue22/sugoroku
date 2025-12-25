@@ -16,6 +16,7 @@ export enum GamePhase {
 }
 
 export type PopupType = 'info' | 'success' | 'danger' | 'event';
+export type DamageType = 'physical' | 'magic' | 'breath';
 
 export interface Player {
   id: number;
@@ -23,7 +24,10 @@ export interface Player {
   color: string; // Tailwind color class prefix e.g. 'red'
   avatar: string; // Emoji
   position: number;
-  skipNextTurn: boolean;
+  skipNextTurn?: boolean; // @deprecated Use turnSkipCount
+  turnSkipCount: number; // Number of turns to skip
+  sealTurns: number; // Number of turns items/magic are sealed
+  items: string[]; // List of item IDs/names
   isWinner: boolean;
   gold: number; // Player's gold/currency
 }
@@ -71,13 +75,17 @@ export interface BossLog {
   description: string;
   currentBossHp?: number; // Snapshot for UI
   isCritical?: boolean;
+  damageType?: DamageType;
 }
 
+export type BossType = 'BELIAL' | 'BAZUZU';
+
 export interface BossState {
+  type: BossType; // Identify which boss this is
   currentHp: number;
   maxHp: number;
   isDefeated: boolean;
-  isSkaraActive: boolean; // 0.5x damage taken
+  isSkaraActive: boolean; // 0.5x damage taken (Belial specific, but harmless to keep)
   logs: BossLog[];
 }
 
@@ -106,6 +114,9 @@ export interface RoomState {
 
   // Boss State (Global Persistence)
   bossState?: BossState;
+
+  // Track defeated bosses to prevent re-triggering (or allow re-fight logic if needed)
+  defeatedBosses?: string[]; // e.g., ['BELIAL', 'BAZUZU']
 
   // Logs
   lastLog: string | null; // Latest log message to append
