@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { RoomState, Player, GamePhase, GameEvent } from '../types';
 import { BOARD_LAYOUT } from '../constants';
+import { BELIAL_CONFIG } from './bossService';
 
 const ROOMS_COLLECTION = 'rooms';
 const ROOM_TTL_MS = 2 * 24 * 60 * 60 * 1000; // 48 hours (2 days)
@@ -61,7 +62,7 @@ const generateRoomId = () => {
   return result;
 };
 
-export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position' | 'skipNextTurn' | 'isWinner' | 'gold'>): Promise<{ roomId: string, playerId: number }> => {
+export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position' | 'turnSkipCount' | 'isWinner' | 'gold' | 'sealTurns' | 'items'>): Promise<{ roomId: string, playerId: number }> => {
   // Trigger cleanup asynchronously
   cleanupExpiredRooms();
 
@@ -72,14 +73,16 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
     id: playerId,
     ...hostPlayerConfig,
     position: 0,
-    skipNextTurn: false,
+    turnSkipCount: 0,
+    sealTurns: 0,
+    items: [],
     isWinner: false,
     gold: 0
   };
 
   const initialRoomState: RoomState = {
     id: roomId,
-    hostId: hostPlayer.name, // Using name as ID for simplicity in this scope, or we could generate a UUID
+    hostId: hostPlayer.name, // Using name as ID for simplicity in this scope
     status: 'WAITING',
     createdAt: Date.now(),
     lastActivityAt: Date.now(),
@@ -90,6 +93,7 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
     diceRollCount: 0,
     currentEvent: null,
     bossState: {
+      type: 'BELIAL', // Default boss to ensure type is set
       currentHp: 20,
       maxHp: 20,
       isDefeated: false,
@@ -106,7 +110,7 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
   return { roomId, playerId };
 };
 
-export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' | 'position' | 'skipNextTurn' | 'isWinner' | 'gold'>): Promise<{ playerId: number } | null> => {
+export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' | 'position' | 'turnSkipCount' | 'isWinner' | 'gold' | 'sealTurns' | 'items'>): Promise<{ playerId: number } | null> => {
   const roomRef = doc(db, ROOMS_COLLECTION, roomId);
   const roomSnap = await getDoc(roomRef);
 
@@ -125,16 +129,12 @@ export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' |
     id: newPlayerId,
     ...playerConfig,
     position: 0,
-    skipNextTurn: false,
+    turnSkipCount: 0,
+    sealTurns: 0,
+    items: [],
     isWinner: false,
     gold: 0
   };
-
-  // Add player to the array
-  // Note: Race conditions are possible here if 2 join exactly at once without transactions.
-  // For this scale, arrayUnion might not work for complex objects if not exact match,
-  // so we read-modify-write or use update with full list.
-  // Safe approach for simple object array: Read, Append, Update.
 
   const updatedPlayers = [...roomData.players, newPlayer];
 
@@ -174,54 +174,76 @@ export const updateGameState = async (roomId: string, updates: Partial<RoomState
 
 // Helper for "Next Turn" logic (call from Active Player client)
 export const nextTurn = async (roomId: string, currentPlayers: Player[], activeIndex: number) => {
+  // Move to next player index
   let nextIndex = (activeIndex + 1) % currentPlayers.length;
   let nextPlayer = currentPlayers[nextIndex];
 
-  let updates: Partial<RoomState> = {};
+  // Logic:
+  // 1. Decrement sealTurns for the PREVIOUS player (the one who just finished)
+  //    This represents the passage of time for their personal effects.
+  let updatedPlayers = [...currentPlayers];
 
-  if (nextPlayer.skipNextTurn) {
-    // Reset skip flag
-    const updatedPlayers = currentPlayers.map((p, i) => i === nextIndex ? { ...p, skipNextTurn: false } : p);
-    updates = {
-        players: updatedPlayers,
-        lastLog: `🚫 ${nextPlayer.name} は休みです。`,
-        lastLogTimestamp: Date.now()
-    };
+  if ((updatedPlayers[activeIndex].sealTurns || 0) > 0) {
+      const prevSeal = updatedPlayers[activeIndex].sealTurns;
+      updatedPlayers[activeIndex] = {
+          ...updatedPlayers[activeIndex],
+          sealTurns: prevSeal - 1
+      };
+      // Note: If sealTurns was 1, it is now 0 (Free).
+      // If sealTurns was 2 (Just applied by boss), it is now 1 (Sealed for next turn).
+  }
 
-    // Recursive or multi-step?
-    // Simply setting the log and update is enough, then we need to actually skip them.
-    // However, handling "Double Skip" requires a loop.
-    // For simplicity: If skipped, we set them to un-skipped, notify, and pass turn to NEXT immediately?
-    // Or just let the UI handle the "Skip" message and then the HOST/Client calls nextTurn AGAIN?
-    // Better: Handle it in one go if possible, but async delay is nice for UI.
-    // Let's just set the updates to "Skip Phase" and let the client auto-advance after delay?
-    // No, stateless is better.
+  // Check if the NEW active player (nextIndex) needs to skip
+  // If turnSkipCount > 0, we decrement it and skip them.
+  // We might need to loop if multiple people are skipping.
 
-    // If skipped, we move to the ONE AFTER.
-    let actualNextIndex = (nextIndex + 1) % currentPlayers.length;
+  let loopCount = 0;
+  let skippedLog = "";
 
-    updates = {
-        players: updatedPlayers, // Saved the "skip used" state
-        activePlayerIndex: actualNextIndex,
-        diceValue: null,
-        lastLog: `🚫 ${nextPlayer.name} は休みです。次は ${currentPlayers[actualNextIndex].name} の番です。`,
-        lastLogTimestamp: Date.now(),
-        lastActivityAt: Date.now()
-    };
+  while (loopCount < updatedPlayers.length) {
+      nextPlayer = updatedPlayers[nextIndex];
 
-  } else {
-    updates = {
-        activePlayerIndex: nextIndex,
-        diceValue: null,
-        lastLog: `👉 ${nextPlayer.name} のターンです。`,
-        lastLogTimestamp: Date.now(),
-        lastActivityAt: Date.now(),
-        latestPopup: {
-          message: `👉 ${nextPlayer.name} のターンです。`,
+      // Migrate old bool to new number if needed (backward compat)
+      if (nextPlayer.skipNextTurn) {
+          nextPlayer.turnSkipCount = (nextPlayer.turnSkipCount || 0) + 1;
+          nextPlayer.skipNextTurn = false;
+      }
+
+      if ((nextPlayer.turnSkipCount || 0) > 0) {
+          // Decrement and Skip
+          updatedPlayers[nextIndex] = {
+              ...nextPlayer,
+              turnSkipCount: nextPlayer.turnSkipCount - 1
+          };
+
+          skippedLog = `🚫 ${nextPlayer.name} は眠っています... (残り${updatedPlayers[nextIndex].turnSkipCount}回)`;
+
+          // Move to next
+          nextIndex = (nextIndex + 1) % updatedPlayers.length;
+          loopCount++;
+      } else {
+          // Found a valid player
+          break;
+      }
+  }
+
+  // Final update
+  const updates: Partial<RoomState> = {
+      players: updatedPlayers,
+      activePlayerIndex: nextIndex,
+      diceValue: null,
+      lastLog: skippedLog ? `${skippedLog} 次は ${updatedPlayers[nextIndex].name} の番です。` : `👉 ${updatedPlayers[nextIndex].name} のターンです。`,
+      lastLogTimestamp: Date.now(),
+      lastActivityAt: Date.now()
+  };
+
+  // Add Popup only if it's a normal turn change
+  if (!skippedLog) {
+      updates.latestPopup = {
+          message: `👉 ${updatedPlayers[nextIndex].name} のターンです。`,
           type: 'info',
           timestamp: Date.now()
-        }
-    };
+      };
   }
 
   await updateDoc(doc(db, ROOMS_COLLECTION, roomId), updates);
