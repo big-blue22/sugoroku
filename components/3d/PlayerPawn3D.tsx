@@ -7,6 +7,7 @@ import { getBoardPosition } from '../../constants';
 
 interface PlayerPawn3DProps {
   id: number;
+  name: string;
   avatar: string;
   color: string;
   targetIndex: number;
@@ -14,7 +15,7 @@ interface PlayerPawn3DProps {
   isActive: boolean;
 }
 
-const PlayerPawn3D = forwardRef<Group, PlayerPawn3DProps>(({ id, avatar, color, targetIndex, offset, isActive }, ref) => {
+const PlayerPawn3D = forwardRef<Group, PlayerPawn3DProps>(({ id, name, avatar, color, targetIndex, offset, isActive }, ref) => {
   const groupRef = useRef<Group>(null);
 
   // Expose groupRef to parent
@@ -168,8 +169,13 @@ const PlayerPawn3D = forwardRef<Group, PlayerPawn3DProps>(({ id, avatar, color, 
 
       {/* Face/Avatar */}
       <Html position={[0, 1.2, 0]} center transform sprite>
-        <div className="text-4xl pointer-events-none select-none filter drop-shadow-lg" style={{ opacity: 0.9 }}>
-            {avatar}
+        <div className="flex flex-col items-center pointer-events-none select-none" style={{ opacity: 0.9 }}>
+            <div className="text-xs font-bold text-white bg-black/50 px-2 py-0.5 rounded mb-1 whitespace-nowrap backdrop-blur-sm">
+                {name}
+            </div>
+            <div className="text-4xl filter drop-shadow-lg">
+                {avatar}
+            </div>
         </div>
       </Html>
     </group>
