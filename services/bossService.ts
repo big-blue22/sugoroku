@@ -56,8 +56,23 @@ export const ATLAS_CONFIG: BossConfig = {
     }
 };
 
+export const BELIAL_REMATCH_CONFIG: BossConfig = {
+    type: 'BELIAL_REMATCH',
+    name: '悪霊の神々 ベリアル',
+    maxHp: 35,
+    goldReward: 1500,
+    skills: {
+        attack: { name: '通常攻撃', chance: 0.25, type: 'ATTACK', damageType: 'physical' },
+        heal: { name: 'ベホイミ', chance: 0.15, type: 'HEAL' },
+        fire: { name: '激しい炎', chance: 0.15, type: 'MAGIC', damageType: 'breath' },
+        spell: { name: 'イオナズン', chance: 0.25, type: 'MAGIC', damageType: 'magic' },
+        skara: { name: 'スカラ', chance: 0.20, type: 'BUFF' },
+    }
+};
+
 export const getBossConfig = (type: BossType = 'BELIAL'): BossConfig => {
     if (type === 'ATLAS') return ATLAS_CONFIG;
+    if (type === 'BELIAL_REMATCH') return BELIAL_REMATCH_CONFIG;
     return type === 'BAZUZU' ? BAZUZU_CONFIG : BELIAL_CONFIG;
 };
 
@@ -139,12 +154,118 @@ export const resolveBossAction = (currentState: BossState, playerName: string, t
         return resolveAtlasAction(currentState, playerName, turnCount);
     } else if (currentState.type === 'BAZUZU') {
         return resolveBazuzuAction(currentState, playerName, turnCount);
+    } else if (currentState.type === 'BELIAL_REMATCH') {
+        return resolveBelialRematchAction(currentState, playerName, turnCount);
     } else {
         return resolveBelialAction(currentState, playerName, turnCount);
     }
 };
 
-// --- Belial Logic (Refactored) ---
+// --- Belial Rematch Logic ---
+const resolveBelialRematchAction = (currentState: BossState, playerName: string, turnCount: number) => {
+    let state = { ...currentState };
+    const logs: BossLog[] = [];
+    let damageToPlayer = 0;
+    let actionType: 'ATTACK' | 'HEAL' | 'BUFF' | 'MAGIC' = 'ATTACK';
+    const config = BELIAL_REMATCH_CONFIG;
+
+    const roll = roll100();
+
+    // Chances: Attack 25, Heal 15, Fire 15, Ionazun 25, Skara 20
+    // Cumulative: 25 -> 40 -> 55 -> 80 -> 100
+
+    if (roll <= 25) {
+        // A. Normal Attack (Physical)
+        // 9 damage (75%), 18 damage (Crit 25%)
+        const isCrit = Math.random() < 0.25;
+        damageToPlayer = isCrit ? 18 : 9;
+        actionType = 'ATTACK';
+
+        logs.push({
+            turn: turnCount,
+            actor: 'boss',
+            action: isCrit ? '痛恨の一撃' : '通常攻撃',
+            value: damageToPlayer,
+            description: isCrit
+                ? `${config.name}の痛恨の一撃！ ${playerName}に${damageToPlayer}の大ダメージ！`
+                : `${config.name}の攻撃！ ${playerName}は${damageToPlayer}ダメージを受けた！`,
+            damageType: 'physical',
+            isCritical: isCrit
+        });
+
+    } else if (roll <= 40) {
+        // B. Behoimi (Heal)
+        const healAmount = 6;
+        const oldHp = state.currentHp;
+        state.currentHp = Math.min(state.maxHp, state.currentHp + healAmount);
+        const actualHeal = state.currentHp - oldHp;
+        actionType = 'HEAL';
+
+        logs.push({
+            turn: turnCount,
+            actor: 'boss',
+            action: 'ベホイミ',
+            value: actualHeal,
+            description: `${config.name}はベホイミを唱えた！ HPが${actualHeal}回復した！`,
+            currentBossHp: state.currentHp
+        });
+
+    } else if (roll <= 55) {
+        // C. Intense Fire (Breath)
+        // 7 damage
+        damageToPlayer = 7;
+        actionType = 'MAGIC';
+
+        logs.push({
+            turn: turnCount,
+            actor: 'boss',
+            action: '激しい炎',
+            value: damageToPlayer,
+            description: `${config.name}は激しい炎を吐いた！ ${playerName}は${damageToPlayer}ダメージを受けた！`,
+            damageType: 'breath'
+        });
+
+    } else if (roll <= 80) {
+        // D. Ionazun (Magic)
+        // 8 damage -> 15 damage if HP <= half (35/2 = 17.5 -> 17)
+        const isLowHp = state.currentHp <= (state.maxHp / 2);
+        damageToPlayer = isLowHp ? 15 : 8;
+        actionType = 'MAGIC';
+
+        const spellText = isLowHp ? '（怒りで威力アップ！）' : '';
+
+        logs.push({
+            turn: turnCount,
+            actor: 'boss',
+            action: 'イオナズン',
+            value: damageToPlayer,
+            description: `${config.name}はイオナズンを唱えた！${spellText} ${playerName}は${damageToPlayer}ダメージを受けた！`,
+            damageType: 'magic'
+        });
+
+    } else {
+        // E. Skara (Buff)
+        state.isSkaraActive = true;
+        actionType = 'BUFF';
+
+        logs.push({
+            turn: turnCount,
+            actor: 'boss',
+            action: 'スカラ',
+            description: `${config.name}はスカラを唱えた！ 次のターンの被ダメージが半減する！`
+        });
+    }
+
+    return {
+        newState: state,
+        damageToPlayer,
+        logs,
+        actionType,
+        specialEffect: undefined
+    };
+};
+
+// --- Belial Logic (Original) ---
 const resolveBelialAction = (currentState: BossState, playerName: string, turnCount: number) => {
     let state = { ...currentState };
     const logs: BossLog[] = [];

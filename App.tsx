@@ -6,7 +6,7 @@ import BattleModal from './components/BattleModal';
 import BossBattleOverlay from './components/BossBattleOverlay';
 import GameScene from './components/3d/GameScene';
 import { generateGameEvent } from './services/gameService';
-import { BELIAL_CONFIG, BAZUZU_CONFIG, ATLAS_CONFIG, getBossConfig } from './services/bossService';
+import { BELIAL_CONFIG, BAZUZU_CONFIG, ATLAS_CONFIG, BELIAL_REMATCH_CONFIG, getBossConfig } from './services/bossService';
 import {
     subscribeToRoom,
     startGame,
@@ -237,17 +237,27 @@ const App: React.FC = () => {
              targetPos = ATLAS_TILE_INDEX;
           }
 
+          // 4. Belial Rematch (Tile 130)
+          const BELIAL_REMATCH_TILE_INDEX = 130;
+          if (targetPos > BELIAL_REMATCH_TILE_INDEX && roomState.bossState && !roomState.bossState.isDefeated && roomState.bossState.type === 'BELIAL_REMATCH') {
+             targetPos = BELIAL_REMATCH_TILE_INDEX;
+          }
+
           // Note: If Belial was defeated, bossState.type is still BELIAL but isDefeated=true.
-          // We need to switch boss state when reaching Tile 70/100.
+          // We need to switch boss state when reaching Tile 70/100/130.
 
           const isBazuzuDefeated = roomState.defeatedBosses?.includes('BAZUZU') || (roomState.bossState?.type === 'BAZUZU' && roomState.bossState?.isDefeated);
           const isAtlasDefeated = roomState.defeatedBosses?.includes('ATLAS') || (roomState.bossState?.type === 'ATLAS' && roomState.bossState?.isDefeated);
+          const isBelialRematchDefeated = roomState.defeatedBosses?.includes('BELIAL_REMATCH') || (roomState.bossState?.type === 'BELIAL_REMATCH' && roomState.bossState?.isDefeated);
 
           if (targetPos > BAZUZU_TILE_INDEX && !isBazuzuDefeated) {
               targetPos = BAZUZU_TILE_INDEX;
           }
           if (targetPos > ATLAS_TILE_INDEX && !isAtlasDefeated) {
               targetPos = ATLAS_TILE_INDEX;
+          }
+          if (targetPos > BELIAL_REMATCH_TILE_INDEX && !isBelialRematchDefeated) {
+              targetPos = BELIAL_REMATCH_TILE_INDEX;
           }
 
 
@@ -343,6 +353,32 @@ const App: React.FC = () => {
 
                    await updateGameState(roomId, {
                        bossState: initialBazuzuState
+                   });
+              }
+              setShowBossOverlay(true);
+              return;
+          }
+      }
+
+      // 4. Belial Rematch Trigger (Tile 130)
+      if (!skipBattleCheck && pos === 130) {
+          const isBelialRematchDefeated = roomState?.defeatedBosses?.includes('BELIAL_REMATCH') || (roomState?.bossState?.type === 'BELIAL_REMATCH' && roomState?.bossState?.isDefeated);
+
+          if (!isBelialRematchDefeated) {
+              // Switch to Belial Rematch if not already
+              if (roomState?.bossState?.type !== 'BELIAL_REMATCH') {
+                  // Init Belial Rematch
+                   const initialRematchState = {
+                         type: 'BELIAL_REMATCH' as const,
+                         currentHp: BELIAL_REMATCH_CONFIG.maxHp,
+                         maxHp: BELIAL_REMATCH_CONFIG.maxHp,
+                         isDefeated: false,
+                         isSkaraActive: false,
+                         logs: []
+                   };
+
+                   await updateGameState(roomId, {
+                       bossState: initialRematchState
                    });
               }
               setShowBossOverlay(true);
