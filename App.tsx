@@ -6,7 +6,7 @@ import BattleModal from './components/BattleModal';
 import BossBattleOverlay from './components/BossBattleOverlay';
 import GameScene from './components/3d/GameScene';
 import { generateGameEvent } from './services/gameService';
-import { BELIAL_CONFIG, BAZUZU_CONFIG, getBossConfig } from './services/bossService';
+import { BELIAL_CONFIG, BAZUZU_CONFIG, ATLAS_CONFIG, getBossConfig } from './services/bossService';
 import {
     subscribeToRoom,
     startGame,
@@ -230,13 +230,24 @@ const App: React.FC = () => {
           if (targetPos > BAZUZU_TILE_INDEX && roomState.bossState && !roomState.bossState.isDefeated && roomState.bossState.type === 'BAZUZU') {
              targetPos = BAZUZU_TILE_INDEX;
           }
+
+          // 3. Atlas (Tile 100)
+          const ATLAS_TILE_INDEX = 100;
+          if (targetPos > ATLAS_TILE_INDEX && roomState.bossState && !roomState.bossState.isDefeated && roomState.bossState.type === 'ATLAS') {
+             targetPos = ATLAS_TILE_INDEX;
+          }
+
           // Note: If Belial was defeated, bossState.type is still BELIAL but isDefeated=true.
-          // We need to switch boss state when reaching Tile 70.
+          // We need to switch boss state when reaching Tile 70/100.
 
           const isBazuzuDefeated = roomState.defeatedBosses?.includes('BAZUZU') || (roomState.bossState?.type === 'BAZUZU' && roomState.bossState?.isDefeated);
+          const isAtlasDefeated = roomState.defeatedBosses?.includes('ATLAS') || (roomState.bossState?.type === 'ATLAS' && roomState.bossState?.isDefeated);
 
           if (targetPos > BAZUZU_TILE_INDEX && !isBazuzuDefeated) {
               targetPos = BAZUZU_TILE_INDEX;
+          }
+          if (targetPos > ATLAS_TILE_INDEX && !isAtlasDefeated) {
+              targetPos = ATLAS_TILE_INDEX;
           }
 
 
@@ -332,6 +343,33 @@ const App: React.FC = () => {
 
                    await updateGameState(roomId, {
                        bossState: initialBazuzuState
+                   });
+              }
+              setShowBossOverlay(true);
+              return;
+          }
+      }
+
+      // 3. Atlas Trigger (Tile 100)
+      if (!skipBattleCheck && pos === 100) {
+          const isAtlasDefeated = roomState?.defeatedBosses?.includes('ATLAS') || (roomState?.bossState?.type === 'ATLAS' && roomState?.bossState?.isDefeated);
+
+          if (!isAtlasDefeated) {
+              // Switch to Atlas if not already
+              if (roomState?.bossState?.type !== 'ATLAS') {
+                  // Init Atlas
+                   const initialAtlasState = {
+                         type: 'ATLAS' as const,
+                         currentHp: ATLAS_CONFIG.maxHp,
+                         maxHp: ATLAS_CONFIG.maxHp,
+                         isDefeated: false,
+                         isSkaraActive: false,
+                         isChargeActive: false,
+                         logs: []
+                   };
+
+                   await updateGameState(roomId, {
+                       bossState: initialAtlasState
                    });
               }
               setShowBossOverlay(true);
