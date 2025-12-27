@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BOSS_CONFIG, BattleResult, resolvePlayerAttack, resolveBossAction } from '../services/bossService';
+import { BOSS_CONFIG, BattleResult, resolvePlayerAttack, resolveBossAction, getBossConfig } from '../services/bossService';
 import { BossState, Player, BossLog } from '../types';
 import Dice2D from './Dice2D';
 
@@ -21,6 +21,9 @@ const BossBattleOverlay: React.FC<BossBattleOverlayProps> = ({ initialBossState,
   const [lastDiceValue, setLastDiceValue] = useState<number | null>(null);
   const [stepsBack, setStepsBack] = useState(0);
   const [isVictory, setIsVictory] = useState(false);
+
+  // Get current boss config dynamically
+  const currentBossConfig = getBossConfig(bossState.type);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -107,18 +110,14 @@ const BossBattleOverlay: React.FC<BossBattleOverlayProps> = ({ initialBossState,
           logs: logs,
           isVictory: isVictory,
           stepsBack: stepsBack,
-          goldReward: isVictory ? 1000 : 0
+          goldReward: isVictory ? currentBossConfig.goldReward : 0
       };
       onComplete(result);
   };
 
   // HP Color Logic (Updated to White/Yellow/Red per request)
-  // MaxHP: 20
-  // 50-100% (10-20): White
-  // 25-49% (5-9): Yellow
-  // 0-24% (0-4): Red
   const getHpColor = (hp: number) => {
-    const ratio = hp / BOSS_CONFIG.maxHp;
+    const ratio = hp / currentBossConfig.maxHp;
     if (ratio < 0.25) return 'text-red-500';
     if (ratio < 0.5) return 'text-yellow-400';
     return 'text-white';
@@ -130,7 +129,7 @@ const BossBattleOverlay: React.FC<BossBattleOverlayProps> = ({ initialBossState,
     return (
       <div key={index} className={`mb-2 p-2 rounded text-xs animate-fade-in ${isPlayer ? 'bg-blue-900/40 ml-0 mr-4' : 'bg-red-900/40 ml-4 mr-0'}`}>
         <div className="font-bold mb-1 opacity-70 flex justify-between">
-          <span>{isPlayer ? player.name : BOSS_CONFIG.name}</span>
+          <span>{isPlayer ? player.name : currentBossConfig.name}</span>
           <span>Turn {log.turn}</span>
         </div>
         <div>{log.description}</div>
@@ -146,7 +145,7 @@ const BossBattleOverlay: React.FC<BossBattleOverlayProps> = ({ initialBossState,
         <div className="bg-slate-800 p-6 text-center border-b border-slate-700 relative">
           <div className="text-6xl mb-4 filter drop-shadow-lg">😈</div>
           <h2 className={`text-2xl font-bold tracking-wider ${getHpColor(bossState.currentHp)} transition-colors duration-500`}>
-            {BOSS_CONFIG.name}
+            {currentBossConfig.name}
           </h2>
           {/* Note: Numerical HP removed as per request */}
 
@@ -203,7 +202,7 @@ const BossBattleOverlay: React.FC<BossBattleOverlayProps> = ({ initialBossState,
                     {isVictory ? (
                         <div className="text-yellow-400 text-2xl font-bold">
                         🏆 VICTORY! 🏆
-                        <div className="text-sm text-white mt-2">賞金 1000G を手に入れた！</div>
+                        <div className="text-sm text-white mt-2">賞金 {currentBossConfig.goldReward}G を手に入れた！</div>
                         </div>
                     ) : (
                         <div className="text-red-500 text-2xl font-bold">
