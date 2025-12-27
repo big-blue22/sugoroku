@@ -12,12 +12,14 @@ export interface BossConfig {
     maxHp: number;
     skills: Record<string, BossSkill>;
     type: BossType;
+    goldReward: number;
 }
 
 export const BELIAL_CONFIG: BossConfig = {
     type: 'BELIAL',
     name: '悪霊の神々 ベリアル',
     maxHp: 20,
+    goldReward: 1000,
     skills: {
         attack: { name: '通常攻撃', chance: 0.25, type: 'ATTACK', damageType: 'physical' },
         heal: { name: 'ベホイミ', chance: 0.15, type: 'HEAL' },
@@ -31,6 +33,7 @@ export const BAZUZU_CONFIG: BossConfig = {
     type: 'BAZUZU',
     name: '悪霊の神々 バズズ',
     maxHp: 25,
+    goldReward: 1100,
     skills: {
         attack: { name: '通常攻撃', chance: 0.25, type: 'ATTACK', damageType: 'physical' }, // 25% crit if HP < half
         zaraki: { name: 'ザラキ', chance: 0.25, type: 'MAGIC', damageType: 'magic' }, // 10% instant death (move to 0)
@@ -45,6 +48,7 @@ export const ATLAS_CONFIG: BossConfig = {
     type: 'ATLAS',
     name: '悪霊の神々 アトラス',
     maxHp: 30,
+    goldReward: 1200,
     skills: {
         attack: { name: '攻撃', chance: 0.90, type: 'ATTACK', damageType: 'physical' },
         wait: { name: '様子見', chance: 0.10, type: 'BUFF' }, // Acts as a "pass"
