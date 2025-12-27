@@ -78,7 +78,7 @@ export interface BossLog {
   damageType?: DamageType;
 }
 
-export type BossType = 'BELIAL' | 'BAZUZU' | 'ATLAS';
+export type BossType = 'BELIAL' | 'BAZUZU' | 'ATLAS' | 'BELIAL_REMATCH';
 
 export interface BossState {
   type: BossType; // Identify which boss this is
