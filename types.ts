@@ -78,7 +78,7 @@ export interface BossLog {
   damageType?: DamageType;
 }
 
-export type BossType = 'BELIAL' | 'BAZUZU';
+export type BossType = 'BELIAL' | 'BAZUZU' | 'ATLAS';
 
 export interface BossState {
   type: BossType; // Identify which boss this is
@@ -86,6 +86,7 @@ export interface BossState {
   maxHp: number;
   isDefeated: boolean;
   isSkaraActive: boolean; // 0.5x damage taken (Belial specific, but harmless to keep)
+  isChargeActive?: boolean; // 2x damage dealt next turn (Atlas specific)
   logs: BossLog[];
 }
 

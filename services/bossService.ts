@@ -41,7 +41,19 @@ export const BAZUZU_CONFIG: BossConfig = {
     }
 };
 
+export const ATLAS_CONFIG: BossConfig = {
+    type: 'ATLAS',
+    name: '悪霊の神々 アトラス',
+    maxHp: 30,
+    skills: {
+        attack: { name: '攻撃', chance: 0.90, type: 'ATTACK', damageType: 'physical' },
+        wait: { name: '様子見', chance: 0.10, type: 'BUFF' }, // Acts as a "pass"
+        charge: { name: '力溜め', chance: 0.20, type: 'BUFF' }, // Low HP only
+    }
+};
+
 export const getBossConfig = (type: BossType = 'BELIAL'): BossConfig => {
+    if (type === 'ATLAS') return ATLAS_CONFIG;
     return type === 'BAZUZU' ? BAZUZU_CONFIG : BELIAL_CONFIG;
 };
 
@@ -119,7 +131,9 @@ export const resolvePlayerAttack = (currentState: BossState, diceRoll: number, p
 
 export const resolveBossAction = (currentState: BossState, playerName: string, turnCount: number) => {
     // Dispatcher
-    if (currentState.type === 'BAZUZU') {
+    if (currentState.type === 'ATLAS') {
+        return resolveAtlasAction(currentState, playerName, turnCount);
+    } else if (currentState.type === 'BAZUZU') {
         return resolveBazuzuAction(currentState, playerName, turnCount);
     } else {
         return resolveBelialAction(currentState, playerName, turnCount);
@@ -379,5 +393,107 @@ const resolveBazuzuAction = (currentState: BossState, playerName: string, turnCo
         logs,
         actionType,
         specialEffect
+    };
+};
+
+// --- Atlas Logic ---
+const resolveAtlasAction = (currentState: BossState, playerName: string, turnCount: number) => {
+    let state = { ...currentState };
+    const logs: BossLog[] = [];
+    let damageToPlayer = 0;
+    let actionType: string = 'ATTACK';
+    const config = ATLAS_CONFIG;
+
+    // Check for existing Charge
+    const isCharged = state.isChargeActive;
+    // Always consume charge
+    if (isCharged) {
+        state.isChargeActive = false;
+    }
+
+    const roll = roll100();
+    const currentHp = state.currentHp;
+    const isLowHp = currentHp <= (state.maxHp / 2); // <= 15
+
+    // Decision Logic
+    // If High HP (>15): 90% Attack, 10% Wait
+    // If Low HP (<=15): 70% Attack, 20% Charge, 10% Wait
+
+    // We can map this to 0-100 ranges.
+    let decision: 'ATTACK' | 'CHARGE' | 'WAIT' = 'ATTACK';
+
+    if (!isLowHp) {
+        if (roll <= 90) decision = 'ATTACK';
+        else decision = 'WAIT';
+    } else {
+        if (roll <= 70) decision = 'ATTACK';
+        else if (roll <= 90) decision = 'CHARGE'; // 71-90 (20%)
+        else decision = 'WAIT'; // 91-100 (10%)
+    }
+
+    if (decision === 'ATTACK') {
+        // Attack Logic: 20% Crit (16 dmg), 80% Normal (8 dmg)
+        // Sub-roll for crit
+        const critRoll = Math.random();
+        const isCrit = critRoll < 0.20;
+
+        let baseDmg = isCrit ? 16 : 8;
+
+        // Apply Charge Multiplier
+        if (isCharged) {
+            baseDmg *= 2;
+        }
+
+        damageToPlayer = baseDmg;
+        actionType = 'ATTACK';
+
+        const chargedText = isCharged ? '（力溜め効果で2倍！）' : '';
+
+        logs.push({
+            turn: turnCount,
+            actor: 'boss',
+            action: isCrit ? '痛恨の一撃' : '攻撃',
+            value: damageToPlayer,
+            description: isCrit
+                ? `${config.name}の痛恨の一撃！${chargedText} ${playerName}に${damageToPlayer}の大ダメージ！`
+                : `${config.name}の攻撃！${chargedText} ${playerName}は${damageToPlayer}ダメージを受けた！`,
+            damageType: 'physical',
+            isCritical: isCrit
+        });
+
+    } else if (decision === 'CHARGE') {
+        // Charge Logic
+        state.isChargeActive = true;
+        actionType = 'BUFF';
+
+        logs.push({
+            turn: turnCount,
+            actor: 'boss',
+            action: '力溜め',
+            description: `${config.name}は力を溜めている... 次のターンの攻撃威力が2倍になる！`,
+        });
+
+    } else {
+        // Wait Logic
+        actionType = 'BUFF'; // technically nothing
+
+        // If charge was active and we waited, it's wasted (consumed at top of function).
+        // Log explicitly if charge was wasted? Or just generic message.
+        const wastedText = isCharged ? '（力溜めが無駄になった...）' : '';
+
+        logs.push({
+            turn: turnCount,
+            actor: 'boss',
+            action: '様子見',
+            description: `${config.name}は様子を見ている... 何もしなかった。${wastedText}`,
+        });
+    }
+
+    return {
+        newState: state,
+        damageToPlayer,
+        logs,
+        actionType,
+        specialEffect: undefined
     };
 };
