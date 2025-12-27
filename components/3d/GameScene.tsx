@@ -170,6 +170,7 @@ const GameScene: React.FC<GameSceneProps> = ({
                     key={p.id}
                     ref={(el) => (playerRefs.current[i] = el)}
                     id={p.id}
+                    name={p.name}
                     avatar={p.avatar}
                     color={p.color}
                     targetIndex={p.position}
