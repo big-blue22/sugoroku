@@ -19,32 +19,33 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
       case TileType.GOOD: return '#fbbf24'; // Gold/Yellow
       case TileType.BAD: return '#ef4444'; // Red
       case TileType.EVENT: return '#a855f7'; // Purple
+      case TileType.ROULETTE: return '#f59e0b'; // Amber/Orange
       default:
         // Default color based on theme
-        switch(theme) {
-            case 'grass': return '#cbd5e1'; // Slate
-            case 'magma': return '#7f1d1d'; // Dark Red
-            case 'underwater': return '#0e7490'; // Cyan/Blue
-            case 'cave': return '#334155'; // Dark Slate
-            case 'rhone': return '#e2e8f0'; // White-ish
-            case 'hargon': return '#4c1d95'; // Violet
-            case 'fairy': return '#f5d0fe'; // Pink
-            default: return '#cbd5e1';
+        switch (theme) {
+          case 'grass': return '#cbd5e1'; // Slate
+          case 'magma': return '#7f1d1d'; // Dark Red
+          case 'underwater': return '#0e7490'; // Cyan/Blue
+          case 'cave': return '#334155'; // Dark Slate
+          case 'rhone': return '#e2e8f0'; // White-ish
+          case 'hargon': return '#4c1d95'; // Violet
+          case 'fairy': return '#f5d0fe'; // Pink
+          default: return '#cbd5e1';
         }
     }
   };
 
   const getGeometry = () => {
-     // Different shapes for themes?
-     // For now, consistent Cylinder is best for gameplay clarity,
-     // but we can vary the "Base Marker" slightly.
-     // e.g. Box for Magma/Cave?
-     const isBoxy = theme === 'magma' || theme === 'cave' || theme === 'hargon';
+    // Different shapes for themes?
+    // For now, consistent Cylinder is best for gameplay clarity,
+    // but we can vary the "Base Marker" slightly.
+    // e.g. Box for Magma/Cave?
+    const isBoxy = theme === 'magma' || theme === 'cave' || theme === 'hargon';
 
-     if (isBoxy) {
-         return <boxGeometry args={[2.5, 0.2, 2.5]} />;
-     }
-     return <cylinderGeometry args={[1.5, 1.5, 0.2, 32]} />;
+    if (isBoxy) {
+      return <boxGeometry args={[2.5, 0.2, 2.5]} />;
+    }
+    return <cylinderGeometry args={[1.5, 1.5, 0.2, 32]} />;
   };
 
   const getLabel = () => {
@@ -54,6 +55,7 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
       case TileType.GOOD: return 'LUCKY';
       case TileType.BAD: return 'TRAP';
       case TileType.EVENT: return 'EVENT';
+      case TileType.ROULETTE: return 'SPIN';
       default: return '';
     }
   };
@@ -65,6 +67,7 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
       case TileType.GOOD: return '⭐';
       case TileType.BAD: return '💀';
       case TileType.EVENT: return '❓';
+      case TileType.ROULETTE: return '🎰';
       default: return null;
     }
   };
@@ -82,8 +85,8 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
       {/* Inner Ring for style (Only for cylindrical themes) */}
       {(theme !== 'magma' && theme !== 'cave' && theme !== 'hargon') && (
         <mesh position={[0, 0.16, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[1.2, 1.3, 32]} />
-            <meshStandardMaterial color="white" opacity={0.5} transparent />
+          <ringGeometry args={[1.2, 1.3, 32]} />
+          <meshStandardMaterial color="white" opacity={0.5} transparent />
         </mesh>
       )}
 

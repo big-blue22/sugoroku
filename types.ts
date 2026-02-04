@@ -4,6 +4,7 @@ export enum TileType {
   GOOD = 'GOOD',
   BAD = 'BAD',
   EVENT = 'EVENT', // AI Generated Event
+  ROULETTE = 'ROULETTE', // New: Roulette Destiny
   GOAL = 'GOAL'
 }
 
@@ -12,6 +13,8 @@ export enum GamePhase {
   PLAYING = 'PLAYING',
   EVENT_PROCESSING = 'EVENT_PROCESSING',
   BATTLE = 'BATTLE',
+  ROULETTE = 'ROULETTE',
+  PVP_BATTLE = 'PVP_BATTLE',
   GAME_OVER = 'GAME_OVER'
 }
 
@@ -122,4 +125,52 @@ export interface RoomState {
   // Logs
   lastLog: string | null; // Latest log message to append
   lastLogTimestamp: number;
+
+  // --- Phase 1 Features ---
+
+  // Roulette State
+  rouletteState?: RouletteState | null;
+
+  // PvP Battle State
+  pvpBattleState?: PvPBattleState | null;
+}
+
+// --- Roulette Destiny Types ---
+export type RouletteEffectType =
+  | 'MOVE_FORWARD'
+  | 'MOVE_BACK'
+  | 'GOLD_GAIN'
+  | 'GOLD_LOSE'
+  | 'TELEPORT_RANDOM'
+  | 'SWAP_POSITION'
+  | 'SHIELD'
+  | 'CURSE'
+  | 'JACKPOT'
+  | 'NOTHING';
+
+export interface RouletteEffect {
+  id: string;
+  name: string;
+  emoji: string;
+  effectType: RouletteEffectType;
+  value: number;
+  description: string;
+}
+
+export interface RouletteState {
+  isSpinning: boolean;
+  selectedEffect: RouletteEffect | null;
+  spinStartTime: number;
+}
+
+// --- PvP Battle Types ---
+export interface PvPBattleState {
+  isActive: boolean;
+  challengerId: number;       // Player who triggered the battle
+  defenderId: number;         // Player being challenged
+  challengerRoll: number | null;
+  defenderRoll: number | null;
+  winnerId: number | null;
+  goldStolen: number;
+  phase: 'WAITING' | 'CHALLENGER_ROLL' | 'DEFENDER_ROLL' | 'RESULT';
 }
