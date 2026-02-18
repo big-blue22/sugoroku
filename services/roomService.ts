@@ -6,17 +6,13 @@ import {
   getDoc,
   updateDoc,
   onSnapshot,
-  arrayUnion,
-  serverTimestamp,
   query,
   where,
   limit,
   getDocs,
   writeBatch
 } from 'firebase/firestore';
-import { RoomState, Player, GamePhase, GameEvent } from '../types';
-import { BOARD_LAYOUT } from '../constants';
-import { BELIAL_CONFIG } from './bossService';
+import { RoomState, Player, GamePhase } from '../types';
 
 const ROOMS_COLLECTION = 'rooms';
 const ROOM_TTL_MS = 2 * 24 * 60 * 60 * 1000; // 48 hours (2 days)
@@ -62,7 +58,7 @@ const generateRoomId = () => {
   return result;
 };
 
-export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position' | 'turnSkipCount' | 'isWinner' | 'gold' | 'sealTurns' | 'items'>): Promise<{ roomId: string, playerId: number }> => {
+export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position' | 'isWinner'>): Promise<{ roomId: string, playerId: number }> => {
   // Trigger cleanup asynchronously
   cleanupExpiredRooms();
 
@@ -73,11 +69,7 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
     id: playerId,
     ...hostPlayerConfig,
     position: 0,
-    turnSkipCount: 0,
-    sealTurns: 0,
-    items: [],
     isWinner: false,
-    gold: 0
   };
 
   const initialRoomState: RoomState = {
@@ -91,15 +83,6 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
     phase: GamePhase.SETUP,
     diceValue: null,
     diceRollCount: 0,
-    currentEvent: null,
-    bossState: {
-      type: 'BELIAL', // Default boss to ensure type is set
-      currentHp: 20,
-      maxHp: 20,
-      isDefeated: false,
-      isSkaraActive: false,
-      logs: []
-    },
     lastLog: `🏁 ルーム ${roomId} が作成されました！`,
     lastLogTimestamp: Date.now()
   };
@@ -110,7 +93,7 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
   return { roomId, playerId };
 };
 
-export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' | 'position' | 'turnSkipCount' | 'isWinner' | 'gold' | 'sealTurns' | 'items'>): Promise<{ playerId: number } | null> => {
+export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' | 'position' | 'isWinner'>): Promise<{ playerId: number } | null> => {
   const roomRef = doc(db, ROOMS_COLLECTION, roomId);
   const roomSnap = await getDoc(roomRef);
 
@@ -129,11 +112,7 @@ export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' |
     id: newPlayerId,
     ...playerConfig,
     position: 0,
-    turnSkipCount: 0,
-    sealTurns: 0,
-    items: [],
     isWinner: false,
-    gold: 0
   };
 
   const updatedPlayers = [...roomData.players, newPlayer];
@@ -178,73 +157,19 @@ export const nextTurn = async (roomId: string, currentPlayers: Player[], activeI
   let nextIndex = (activeIndex + 1) % currentPlayers.length;
   let nextPlayer = currentPlayers[nextIndex];
 
-  // Logic:
-  // 1. Decrement sealTurns for the PREVIOUS player (the one who just finished)
-  //    This represents the passage of time for their personal effects.
-  let updatedPlayers = [...currentPlayers];
-
-  if ((updatedPlayers[activeIndex].sealTurns || 0) > 0) {
-      const prevSeal = updatedPlayers[activeIndex].sealTurns;
-      updatedPlayers[activeIndex] = {
-          ...updatedPlayers[activeIndex],
-          sealTurns: prevSeal - 1
-      };
-      // Note: If sealTurns was 1, it is now 0 (Free).
-      // If sealTurns was 2 (Just applied by boss), it is now 1 (Sealed for next turn).
-  }
-
-  // Check if the NEW active player (nextIndex) needs to skip
-  // If turnSkipCount > 0, we decrement it and skip them.
-  // We might need to loop if multiple people are skipping.
-
-  let loopCount = 0;
-  let skippedLog = "";
-
-  while (loopCount < updatedPlayers.length) {
-      nextPlayer = updatedPlayers[nextIndex];
-
-      // Migrate old bool to new number if needed (backward compat)
-      if (nextPlayer.skipNextTurn) {
-          nextPlayer.turnSkipCount = (nextPlayer.turnSkipCount || 0) + 1;
-          nextPlayer.skipNextTurn = false;
-      }
-
-      if ((nextPlayer.turnSkipCount || 0) > 0) {
-          // Decrement and Skip
-          updatedPlayers[nextIndex] = {
-              ...nextPlayer,
-              turnSkipCount: nextPlayer.turnSkipCount - 1
-          };
-
-          skippedLog = `🚫 ${nextPlayer.name} は眠っています... (残り${updatedPlayers[nextIndex].turnSkipCount}回)`;
-
-          // Move to next
-          nextIndex = (nextIndex + 1) % updatedPlayers.length;
-          loopCount++;
-      } else {
-          // Found a valid player
-          break;
-      }
-  }
-
   // Final update
   const updates: Partial<RoomState> = {
-      players: updatedPlayers,
       activePlayerIndex: nextIndex,
       diceValue: null,
-      lastLog: skippedLog ? `${skippedLog} 次は ${updatedPlayers[nextIndex].name} の番です。` : `👉 ${updatedPlayers[nextIndex].name} のターンです。`,
+      lastLog: `👉 ${nextPlayer.name} のターンです。`,
       lastLogTimestamp: Date.now(),
-      lastActivityAt: Date.now()
-  };
-
-  // Add Popup only if it's a normal turn change
-  if (!skippedLog) {
-      updates.latestPopup = {
-          message: `👉 ${updatedPlayers[nextIndex].name} のターンです。`,
+      lastActivityAt: Date.now(),
+      latestPopup: {
+          message: `👉 ${nextPlayer.name} のターンです。`,
           type: 'info',
           timestamp: Date.now()
-      };
-  }
+      }
+  };
 
   await updateDoc(doc(db, ROOMS_COLLECTION, roomId), updates);
 };
