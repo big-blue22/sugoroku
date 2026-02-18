@@ -157,8 +157,7 @@ const GameScene: React.FC<GameSceneProps> = ({
         {/* Tiles */}
         {board.map((tile, i) => {
           const { x, y, z } = getBoardPosition(i);
-          const zone = getZoneForIndex(i);
-          return <Tile3D key={tile.id} type={tile.type} x={x} y={y} z={z} index={i} theme={zone.themeId} />;
+          return <Tile3D key={tile.id} type={tile.type} x={x} y={y} z={z} index={i} />;
         })}
 
         {/* Players */}
@@ -168,7 +167,7 @@ const GameScene: React.FC<GameSceneProps> = ({
             return (
                 <PlayerPawn3D
                     key={p.id}
-                    ref={(el) => (playerRefs.current[i] = el)}
+                    ref={(el) => { if (el) playerRefs.current[i] = el; }}
                     id={p.id}
                     name={p.name}
                     avatar={p.avatar}
