@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Float } from '@react-three/drei';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { Tile, Player } from '../../types';
@@ -109,17 +110,21 @@ const GameScene: React.FC<GameSceneProps> = ({
             auto={autoCamera}
         />
 
-        <ambientLight intensity={0.6} />
+        {/* Improved Lighting & Ambience */}
+        <ambientLight intensity={0.5} color="#e2e8f0" />
         <directionalLight
-          position={[10, 50, 10]}
-          intensity={1.2}
+          position={[10, 50, 20]} // Moved slightly forward for better shadows
+          intensity={1.5}
           castShadow
           shadow-mapSize={[2048, 2048]}
           shadow-camera-left={-50}
           shadow-camera-right={50}
           shadow-camera-top={50}
           shadow-camera-bottom={-50}
+          shadow-bias={-0.0001} // Reduce shadow acne
         />
+        <pointLight position={[0, 10, 0]} intensity={0.5} distance={100} decay={2} color="#fbbf24" />
+        <fog attach="fog" args={['#0f172a', 30, 100]} /> {/* Atmospheric fog matching slate-900 bg */}
 
         <Environment />
 
@@ -143,12 +148,20 @@ const GameScene: React.FC<GameSceneProps> = ({
                  return (
                     <mesh
                         key={`path-${i}`}
-                        position={[center.x, center.y + 0.02, center.z]}
+                        position={[center.x, center.y + 0.05, center.z]}
                         quaternion={new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction.normalize())}
                         receiveShadow
                     >
-                        <boxGeometry args={[len, 0.05, 0.6]} />
-                        <meshStandardMaterial color="#ffffff" />
+                        {/* More interesting path using a thinner plane with glowing material */}
+                        <planeGeometry args={[len, 0.4]} />
+                        <meshStandardMaterial 
+                            color="#38bdf8" 
+                            emissive="#0284c7"
+                            emissiveIntensity={0.5}
+                            transparent 
+                            opacity={0.6} 
+                            side={THREE.DoubleSide}
+                        />
                     </mesh>
                  )
              })}
