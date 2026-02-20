@@ -17,14 +17,14 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
       case TileType.START: return '#3b82f6'; // Blue
       case TileType.GOAL: return '#fbbf24'; // Gold
       default:
-        // Default color based on theme
+        // Lighter colors with higher contrast for better visibility
         switch (theme) {
-          case 'grass': return '#94a3b8'; // Lighter Slate for path standing out from bright green grass
-          case 'magma': return '#450a0a'; // Darker for lava path
-          case 'underwater': return '#0891b2'; // Cyan/Blue
-          case 'cave': return '#475569'; // Dark Slate
-          case 'rhone': return '#f1f5f9'; // White-ish
-          case 'hargon': return '#581c87'; // Violet
+          case 'grass': return '#cbd5e1'; // Bright Slate
+          case 'magma': return '#fca5a5'; // Light red/pinkish instead of dark brown/red
+          case 'underwater': return '#67e8f9'; // Bright Cyan
+          case 'cave': return '#94a3b8'; // Medium bright slate
+          case 'rhone': return '#ffffff'; // Pure White
+          case 'hargon': return '#d8b4fe'; // Light purple
           case 'fairy': return '#fbcfe8'; // Pink
           default: return '#cbd5e1';
         }
@@ -34,7 +34,8 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
   const getEmissive = () => {
     if (type === TileType.START) return '#1d4ed8'; // Emissive Blue
     if (type === TileType.GOAL) return '#d97706'; // Emissive Gold
-    return '#000000'; // No emission for normal tiles
+    // Add a very subtle self-illumination to all normal path tiles so they pop out
+    return getBaseColor();
   };
 
   const getGeometry = () => {
@@ -81,8 +82,8 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
             <meshStandardMaterial
               color={getBaseColor()}
               emissive={getEmissive()}
-              emissiveIntensity={isSpecial ? 0.8 : 0}
-              roughness={isSpecial ? 0.2 : 0.6} // Special tiles are shinier
+              emissiveIntensity={isSpecial ? 0.8 : 0.2} // 0.2 gives normal tiles a slight visibility boost
+              roughness={isSpecial ? 0.2 : 0.5} // slightly smoother for better light catch
               metalness={isSpecial ? 0.5 : 0.1}
             />
           </mesh>

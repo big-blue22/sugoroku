@@ -61,8 +61,8 @@ const CameraController: React.FC<{
       let targetPos = new THREE.Vector3(0, 0, 0);
 
       if (activeGroup) {
-          // Track position including Y
-          targetPos.copy(activeGroup.position);
+        // Track position including Y
+        targetPos.copy(activeGroup.position);
       }
 
       // Lerp camera position to be offset from target
@@ -75,8 +75,8 @@ const CameraController: React.FC<{
       // Update OrbitControls target
       const orbitControls = (state.controls as any);
       if (orbitControls) {
-          orbitControls.target.lerp(targetPos, delta * 2);
-          orbitControls.update();
+        orbitControls.target.lerp(targetPos, delta * 2);
+        orbitControls.update();
       }
     }
   });
@@ -105,66 +105,66 @@ const GameScene: React.FC<GameSceneProps> = ({
         <OrbitControls makeDefault enableDamping dampingFactor={0.1} maxPolarAngle={Math.PI / 2.1} />
 
         <CameraController
-            playerRefs={playerRefs}
-            activePlayerIndex={activePlayerIndex}
-            auto={autoCamera}
+          playerRefs={playerRefs}
+          activePlayerIndex={activePlayerIndex}
+          auto={autoCamera}
         />
 
-        {/* Improved Lighting & Ambience */}
-        <ambientLight intensity={0.5} color="#e2e8f0" />
+        {/* Improved Lighting & Ambience (Adjusted for better visibility) */}
+        <ambientLight intensity={0.9} color="#ffffff" /> {/* Increased ambient light for better overall visibility */}
         <directionalLight
-          position={[10, 50, 20]} // Moved slightly forward for better shadows
-          intensity={1.5}
+          position={[15, 60, 25]} // Higher and further back
+          intensity={1.2} // Slightly softer directional shadows
           castShadow
           shadow-mapSize={[2048, 2048]}
           shadow-camera-left={-50}
           shadow-camera-right={50}
           shadow-camera-top={50}
           shadow-camera-bottom={-50}
-          shadow-bias={-0.0001} // Reduce shadow acne
+          shadow-bias={-0.0001}
         />
-        <pointLight position={[0, 10, 0]} intensity={0.5} distance={100} decay={2} color="#fbbf24" />
-        <fog attach="fog" args={['#0f172a', 30, 100]} /> {/* Atmospheric fog matching slate-900 bg */}
+        <pointLight position={[0, 15, 0]} intensity={0.6} distance={150} decay={2} color="#fbbf24" />
+        <fog attach="fog" args={['#0f172a', 60, 150]} /> {/* Pushed fog much further back to avoid obscuring the board */}
 
         <Environment />
 
         {/* Path Lines */}
         <group>
-             {board.map((_, i) => {
-                 if (i >= board.length - 1) return null;
-                 const start = getBoardPosition(i);
-                 const end = getBoardPosition(i+1);
+          {board.map((_, i) => {
+            if (i >= board.length - 1) return null;
+            const start = getBoardPosition(i);
+            const end = getBoardPosition(i + 1);
 
-                 // Create a line between them
-                 const startVec = new THREE.Vector3(start.x, start.y, start.z);
-                 const endVec = new THREE.Vector3(end.x, end.y, end.z);
+            // Create a line between them
+            const startVec = new THREE.Vector3(start.x, start.y, start.z);
+            const endVec = new THREE.Vector3(end.x, end.y, end.z);
 
-                 const direction = new THREE.Vector3().subVectors(endVec, startVec);
-                 const len = direction.length();
+            const direction = new THREE.Vector3().subVectors(endVec, startVec);
+            const len = direction.length();
 
-                 // Center point
-                 const center = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5);
+            // Center point
+            const center = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5);
 
-                 return (
-                    <mesh
-                        key={`path-${i}`}
-                        position={[center.x, center.y + 0.05, center.z]}
-                        quaternion={new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction.normalize())}
-                        receiveShadow
-                    >
-                        {/* More interesting path using a thinner plane with glowing material */}
-                        <planeGeometry args={[len, 0.4]} />
-                        <meshStandardMaterial 
-                            color="#38bdf8" 
-                            emissive="#0284c7"
-                            emissiveIntensity={0.5}
-                            transparent 
-                            opacity={0.6} 
-                            side={THREE.DoubleSide}
-                        />
-                    </mesh>
-                 )
-             })}
+            return (
+              <mesh
+                key={`path-${i}`}
+                position={[center.x, center.y + 0.05, center.z]}
+                quaternion={new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction.normalize())}
+                receiveShadow
+              >
+                {/* More interesting path using a thinner plane with glowing material */}
+                <planeGeometry args={[len, 0.4]} />
+                <meshStandardMaterial
+                  color="#38bdf8"
+                  emissive="#0284c7"
+                  emissiveIntensity={0.5}
+                  transparent
+                  opacity={0.6}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+            )
+          })}
         </group>
 
         {/* Tiles */}
@@ -176,28 +176,28 @@ const GameScene: React.FC<GameSceneProps> = ({
 
         {/* Players */}
         {players.map((p, i) => {
-            const offset = getPlayerOffset(i, players, p.position);
+          const offset = getPlayerOffset(i, players, p.position);
 
-            return (
-                <PlayerPawn3D
-                    key={p.id}
-                    ref={(el) => (playerRefs.current[i] = el)}
-                    id={p.id}
-                    name={p.name}
-                    avatar={p.avatar}
-                    color={p.color}
-                    targetIndex={p.position}
-                    offset={offset}
-                    isActive={i === activePlayerIndex}
-                />
-            );
+          return (
+            <PlayerPawn3D
+              key={p.id}
+              ref={(el) => { playerRefs.current[i] = el; }}
+              id={p.id}
+              name={p.name}
+              avatar={p.avatar}
+              color={p.color}
+              targetIndex={p.position}
+              offset={offset}
+              isActive={i === activePlayerIndex}
+            />
+          );
         })}
 
         {/* 3D Die */}
         <Die3D
-           trigger={diceTrigger}
-           targetValue={diceTarget}
-           position={[activePos.x + 2, activePos.y, activePos.z + 2]} // Start high above
+          trigger={diceTrigger}
+          targetValue={diceTarget}
+          position={[activePos.x + 2, activePos.y, activePos.z + 2]} // Start high above
         />
 
       </Canvas>
