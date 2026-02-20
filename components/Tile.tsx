@@ -8,11 +8,10 @@ interface TileProps {
 }
 
 const Tile: React.FC<TileProps> = ({ tile, style, className }) => {
-  let bgColor = 'bg-slate-200';
+  let bgColor = 'bg-white';
   let borderColor = 'border-slate-300';
   let icon = '';
-  let label = String(tile.id);
-  let showTypeLabel = false;
+  let label = '';
 
   switch (tile.type) {
     case TileType.START:
@@ -27,38 +26,13 @@ const Tile: React.FC<TileProps> = ({ tile, style, className }) => {
       icon = '👑';
       label = 'ゴール';
       break;
-    case TileType.GOOD:
-      bgColor = 'bg-green-100';
-      borderColor = 'border-green-300';
-      icon = '🍀';
-      showTypeLabel = true;
-      break;
-    case TileType.BAD:
-      bgColor = 'bg-red-100';
-      borderColor = 'border-red-300';
-      icon = '🔥';
-      showTypeLabel = true;
-      break;
-    case TileType.EVENT:
-      bgColor = 'bg-purple-100';
-      borderColor = 'border-purple-300';
-      icon = '🔮';
-      showTypeLabel = true;
-      break;
     default:
       bgColor = 'bg-white';
+      borderColor = 'border-slate-300';
       icon = '';
+      label = '';
       break;
   }
-
-  const getTypeLabel = (type: TileType) => {
-    switch (type) {
-        case TileType.GOOD: return '好機';
-        case TileType.BAD: return '危機';
-        case TileType.EVENT: return '謎';
-        default: return '';
-    }
-  };
 
   return (
     <div
@@ -76,7 +50,7 @@ const Tile: React.FC<TileProps> = ({ tile, style, className }) => {
       </span>
       <div className="text-2xl mb-1">{icon}</div>
       <div className={`text-xs font-bold uppercase ${tile.type === TileType.START || tile.type === TileType.GOAL ? 'text-white' : 'text-slate-600'}`}>
-        {label === String(tile.id) ? (showTypeLabel ? getTypeLabel(tile.type) : '') : label}
+        {label}
       </div>
     </div>
   );

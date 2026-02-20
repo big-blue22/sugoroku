@@ -1,34 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GamePhase, Player, Tile, TileType, RoomState, BattleState, Monster, RouletteEffect, PvPBattleState } from './types';
+import { GamePhase, Player, Tile, TileType, RoomState } from './types';
 import SetupScreen from './components/SetupScreen';
 import Popup, { PopupType } from './components/Popup';
-import BattleModal from './components/BattleModal';
-import BossBattleOverlay from './components/BossBattleOverlay';
-import RouletteModal from './components/RouletteModal';
-import PvPBattleModal from './components/PvPBattleModal';
 import GameScene from './components/3d/GameScene';
-import { generateGameEvent } from './services/gameService';
-import { BELIAL_CONFIG, BAZUZU_CONFIG, ATLAS_CONFIG, BELIAL_REMATCH_CONFIG, getBossConfig } from './services/bossService';
 import {
     subscribeToRoom,
     startGame,
     updateGameState,
     nextTurn
 } from './services/roomService';
-import { BOARD_LAYOUT, BOARD_SIZE, getMonsterForTile, BATTLE_ENCOUNTER_RATES, ITEMS, getRandomRouletteEffect } from './constants';
+import { BOARD_LAYOUT, BOARD_SIZE } from './constants';
 
 const buildBoard = (): Tile[] => {
     return BOARD_LAYOUT.map((type, index) => ({
         id: index,
         type,
-        effectValue: type === TileType.GOOD ? 3 : 0 // BAD tiles now trigger battles instead of moving back
     }));
 };
 
 const App: React.FC = () => {
     // Multiplayer State
     const [roomId, setRoomId] = useState<string | null>(null);
-    const [myPlayerId, setMyPlayerId] = useState<number | null>(null); // This is an index in the array
+    const [myPlayerId, setMyPlayerId] = useState<number | null>(null);
     const [myPlayerName, setMyPlayerName] = useState<string>("");
     const [roomState, setRoomState] = useState<RoomState | null>(null);
 
@@ -41,8 +34,8 @@ const App: React.FC = () => {
     const [popupData, setPopupData] = useState<{ msg: string; type: PopupType } | null>(null);
     const [autoCamera, setAutoCamera] = useState(true);
     const [isRolling, setIsRolling] = useState(false);
-    const [isProcessingTurn, setIsProcessingTurn] = useState(false); // Lock for active player during logic execution
-    const [isBoardBusy, setIsBoardBusy] = useState(false); // Global lock when pieces are moving
+    const [isProcessingTurn, setIsProcessingTurn] = useState(false);
+    const [isBoardBusy, setIsBoardBusy] = useState(false);
 
     // Track last processed popup to avoid duplication
     const lastProcessedPopupTime = useRef<number>(0);
@@ -52,23 +45,8 @@ const App: React.FC = () => {
     const [showInfoPanel, setShowInfoPanel] = useState(false);
     const [activeTab, setActiveTab] = useState<'players' | 'logs'>('players');
 
-    // Battle State
-    const [isBattleRolling, setIsBattleRolling] = useState(false);
-    const [showBossOverlay, setShowBossOverlay] = useState(false);
-    const [bossBattleResult, setBossBattleResult] = useState<any>(null); // Using any to avoid complex import circulars for now, or just implicit
-
-    // Items State
-    const [showItemModal, setShowItemModal] = useState(false);
-
-    // Roulette State
-    const [isRouletteSpinning, setIsRouletteSpinning] = useState(false);
-
-    // PvP State
-    const [isPvPRolling, setIsPvPRolling] = useState(false);
-
     // Derived State (local caching of animations)
     const [localDiceValue, setLocalDiceValue] = useState<number | null>(null);
-    // We use this to trigger the 3D dice. Increments when roomState.diceRollCount changes.
     const [dice3DTrigger, setDice3DTrigger] = useState(0);
 
     // --- Subscriptions & Effect Handling ---
@@ -106,8 +84,6 @@ const App: React.FC = () => {
 
         if (maxDist > 0) {
             setIsBoardBusy(true);
-            // Calculate animation time (match logic in handleRollDice + buffer)
-            // 500ms per tile + 500ms buffer
             const animTime = (maxDist * 500) + 500;
 
             const timer = setTimeout(() => {
@@ -151,24 +127,14 @@ const App: React.FC = () => {
         if (roomState?.diceRollCount && roomState.diceValue) {
             setLocalDiceValue(roomState.diceValue);
             setDice3DTrigger(prev => prev + 1);
-            setIsRolling(true); // Visual indicator start
+            setIsRolling(true);
 
-            // Stop rolling visual after a moment
             setTimeout(() => {
                 setIsRolling(false);
-                // Trigger Popup for everyone
                 triggerPopup(`${roomState.diceValue} が出ました！`, 'info', 3000);
             }, 2000);
         }
     }, [roomState?.diceRollCount, roomState?.diceValue]);
-
-    // Handle Events Popups
-    useEffect(() => {
-        if (roomState?.currentEvent) {
-            triggerPopup(`🔮 イベント: ${roomState.currentEvent.title}`, 'event', 3000);
-            addLog(`🔮 イベント: 「${roomState.currentEvent.title}」`);
-        }
-    }, [roomState?.currentEvent]);
 
 
     // --- Helper Functions ---
@@ -202,7 +168,6 @@ const App: React.FC = () => {
         if (!roomId || !roomState || isRolling || isProcessingTurn || isBoardBusy) return;
 
         const activePlayer = roomState.players[roomState.activePlayerIndex];
-        // Only active player can roll
         if (activePlayer.id !== myPlayerId) return;
 
         setIsProcessingTurn(true);
@@ -219,58 +184,15 @@ const App: React.FC = () => {
                 lastLogTimestamp: Date.now()
             });
 
-            // Wait for animation (approx 1.5s - 2s)
+            // Wait for animation
             await new Promise(r => setTimeout(r, 2000));
 
             // Calculate Move
             const currentPos = activePlayer.position;
             let targetPos = currentPos + roll;
 
-            // BOSS BARRIER LOGIC
-            // 1. Belial (Tile 40)
-            const BELIAL_TILE_INDEX = 40;
-            if (targetPos > BELIAL_TILE_INDEX && roomState.bossState && !roomState.bossState.isDefeated && roomState.bossState.type === 'BELIAL') {
-                targetPos = BELIAL_TILE_INDEX;
-            }
-
-            // 2. Bazuzu (Tile 70)
-            const BAZUZU_TILE_INDEX = 70;
-            if (targetPos > BAZUZU_TILE_INDEX && roomState.bossState && !roomState.bossState.isDefeated && roomState.bossState.type === 'BAZUZU') {
-                targetPos = BAZUZU_TILE_INDEX;
-            }
-
-            // 3. Atlas (Tile 100)
-            const ATLAS_TILE_INDEX = 100;
-            if (targetPos > ATLAS_TILE_INDEX && roomState.bossState && !roomState.bossState.isDefeated && roomState.bossState.type === 'ATLAS') {
-                targetPos = ATLAS_TILE_INDEX;
-            }
-
-            // 4. Belial Rematch (Tile 130)
-            const BELIAL_REMATCH_TILE_INDEX = 130;
-            if (targetPos > BELIAL_REMATCH_TILE_INDEX && roomState.bossState && !roomState.bossState.isDefeated && roomState.bossState.type === 'BELIAL_REMATCH') {
-                targetPos = BELIAL_REMATCH_TILE_INDEX;
-            }
-
-            // Note: If Belial was defeated, bossState.type is still BELIAL but isDefeated=true.
-            // We need to switch boss state when reaching Tile 70/100/130.
-
-            const isBazuzuDefeated = roomState.defeatedBosses?.includes('BAZUZU') || (roomState.bossState?.type === 'BAZUZU' && roomState.bossState?.isDefeated);
-            const isAtlasDefeated = roomState.defeatedBosses?.includes('ATLAS') || (roomState.bossState?.type === 'ATLAS' && roomState.bossState?.isDefeated);
-            const isBelialRematchDefeated = roomState.defeatedBosses?.includes('BELIAL_REMATCH') || (roomState.bossState?.type === 'BELIAL_REMATCH' && roomState.bossState?.isDefeated);
-
-            if (targetPos > BAZUZU_TILE_INDEX && !isBazuzuDefeated) {
-                targetPos = BAZUZU_TILE_INDEX;
-            }
-            if (targetPos > ATLAS_TILE_INDEX && !isAtlasDefeated) {
-                targetPos = ATLAS_TILE_INDEX;
-            }
-            if (targetPos > BELIAL_REMATCH_TILE_INDEX && !isBelialRematchDefeated) {
-                targetPos = BELIAL_REMATCH_TILE_INDEX;
-            }
-
-
             if (targetPos >= BOARD_SIZE - 1) targetPos = BOARD_SIZE - 1;
-            if (targetPos <= 0) targetPos = 0; // Should not happen on fwd roll
+            if (targetPos <= 0) targetPos = 0;
 
             // Update Player Position in DB
             const updatedPlayers = roomState.players.map(p =>
@@ -301,7 +223,7 @@ const App: React.FC = () => {
         }
     };
 
-    const handleTileEffect = async (pos: number, player: Player, currentPlayers: Player[], skipBattleCheck: boolean = false) => {
+    const handleTileEffect = async (pos: number, player: Player, currentPlayers: Player[]) => {
         if (!roomId) return;
         const tile = board[pos];
 
@@ -316,723 +238,8 @@ const App: React.FC = () => {
             return;
         }
 
-        // --- BOSS TRIGGERS ---
-
-        // 1. Belial Trigger (Tile 40)
-        if (!skipBattleCheck && pos === 40) {
-            const isBelialDefeated = roomState?.defeatedBosses?.includes('BELIAL') || (roomState?.bossState?.type === 'BELIAL' && roomState?.bossState?.isDefeated);
-
-            if (!isBelialDefeated) {
-                // Ensure Boss State is Belial
-                if (roomState?.bossState?.type !== 'BELIAL') {
-                    // Reset/Init Belial
-                    await updateGameState(roomId, {
-                        bossState: {
-                            type: 'BELIAL',
-                            currentHp: BELIAL_CONFIG.maxHp,
-                            maxHp: BELIAL_CONFIG.maxHp,
-                            isDefeated: false,
-                            isSkaraActive: false,
-                            logs: []
-                        }
-                    });
-                }
-                setShowBossOverlay(true);
-                return;
-            }
-        }
-
-        // 2. Bazuzu Trigger (Tile 70)
-        if (!skipBattleCheck && pos === 70) {
-            const isBazuzuDefeated = roomState?.defeatedBosses?.includes('BAZUZU') || (roomState?.bossState?.type === 'BAZUZU' && roomState?.bossState?.isDefeated);
-
-            if (!isBazuzuDefeated) {
-                // Switch to Bazuzu if not already
-                if (roomState?.bossState?.type !== 'BAZUZU') {
-                    // Init Bazuzu
-                    const initialBazuzuState = {
-                        type: 'BAZUZU' as const,
-                        currentHp: BAZUZU_CONFIG.maxHp,
-                        maxHp: BAZUZU_CONFIG.maxHp,
-                        isDefeated: false,
-                        isSkaraActive: false,
-                        logs: []
-                    };
-
-                    await updateGameState(roomId, {
-                        bossState: initialBazuzuState
-                    });
-                }
-                setShowBossOverlay(true);
-                return;
-            }
-        }
-
-        // 4. Belial Rematch Trigger (Tile 130)
-        if (!skipBattleCheck && pos === 130) {
-            const isBelialRematchDefeated = roomState?.defeatedBosses?.includes('BELIAL_REMATCH') || (roomState?.bossState?.type === 'BELIAL_REMATCH' && roomState?.bossState?.isDefeated);
-
-            if (!isBelialRematchDefeated) {
-                // Switch to Belial Rematch if not already
-                if (roomState?.bossState?.type !== 'BELIAL_REMATCH') {
-                    // Init Belial Rematch
-                    const initialRematchState = {
-                        type: 'BELIAL_REMATCH' as const,
-                        currentHp: BELIAL_REMATCH_CONFIG.maxHp,
-                        maxHp: BELIAL_REMATCH_CONFIG.maxHp,
-                        isDefeated: false,
-                        isSkaraActive: false,
-                        logs: []
-                    };
-
-                    await updateGameState(roomId, {
-                        bossState: initialRematchState
-                    });
-                }
-                setShowBossOverlay(true);
-                return;
-            }
-        }
-
-        // 3. Atlas Trigger (Tile 100)
-        if (!skipBattleCheck && pos === 100) {
-            const isAtlasDefeated = roomState?.defeatedBosses?.includes('ATLAS') || (roomState?.bossState?.type === 'ATLAS' && roomState?.bossState?.isDefeated);
-
-            if (!isAtlasDefeated) {
-                // Switch to Atlas if not already
-                if (roomState?.bossState?.type !== 'ATLAS') {
-                    // Init Atlas
-                    const initialAtlasState = {
-                        type: 'ATLAS' as const,
-                        currentHp: ATLAS_CONFIG.maxHp,
-                        maxHp: ATLAS_CONFIG.maxHp,
-                        isDefeated: false,
-                        isSkaraActive: false,
-                        isChargeActive: false,
-                        logs: []
-                    };
-
-                    await updateGameState(roomId, {
-                        bossState: initialAtlasState
-                    });
-                }
-                setShowBossOverlay(true);
-                return;
-            }
-        }
-
-
-        // Skip battle check if player was moved here from damage (to prevent infinite loops)
-        if (!skipBattleCheck) {
-            // Check for battle encounter based on tile type
-            const encounterRate = BATTLE_ENCOUNTER_RATES[tile.type] ?? 0;
-
-            if (encounterRate > 0) {
-                const shouldBattle = Math.random() < encounterRate;
-
-                if (shouldBattle) {
-                    const monster = getMonsterForTile(pos);
-
-                    if (monster) {
-                        // Start battle
-                        await updateGameState(roomId, {
-                            phase: GamePhase.BATTLE,
-                            battleState: {
-                                isActive: true,
-                                monster: monster,
-                                playerRoll: null,
-                                result: 'pending',
-                                goldEarned: 0,
-                                tilesBack: 0,
-                            },
-                            lastLog: `⚔️ ${monster.name}が現れた！`,
-                            lastLogTimestamp: Date.now()
-                        });
-                        return;
-                    }
-                }
-            }
-        }
-
-        if (tile.type === TileType.GOOD && tile.effectValue) {
-            await new Promise(r => setTimeout(r, 1000));
-            const newPos = Math.min(BOARD_SIZE - 1, pos + tile.effectValue);
-
-            const newPlayers = currentPlayers.map(p => p.id === player.id ? { ...p, position: newPos } : p);
-            await updateGameState(roomId, {
-                players: newPlayers,
-                lastLog: `✨ ラッキー！ ${tile.effectValue}マス進みます。`,
-                lastLogTimestamp: Date.now(),
-                latestPopup: {
-                    message: `✨ ラッキー！ ${tile.effectValue}マス進みます。`,
-                    type: 'success',
-                    timestamp: Date.now()
-                }
-            });
-
-            const dist = Math.abs(newPos - pos);
-            const waitTime = (dist * 500) + 500;
-            await new Promise(r => setTimeout(r, waitTime));
-            await nextTurn(roomId, newPlayers, roomState!.activePlayerIndex);
-
-        } else if (tile.type === TileType.EVENT) {
-            await updateGameState(roomId, {
-                phase: GamePhase.EVENT_PROCESSING,
-                lastLog: `🔮 イベント発生！運命のカードを引きます...`,
-                lastLogTimestamp: Date.now()
-            });
-
-            const event = await generateGameEvent(player.name);
-
-            await updateGameState(roomId, {
-                currentEvent: event,
-                lastLog: `🔮 イベント: 「${event.title}」`,
-                lastLogTimestamp: Date.now()
-            });
-
-        } else if (tile.type === TileType.ROULETTE) {
-            // Trigger Roulette Phase
-            await updateGameState(roomId, {
-                phase: GamePhase.ROULETTE,
-                rouletteState: {
-                    isSpinning: false,
-                    selectedEffect: null,
-                    spinStartTime: 0
-                },
-                lastLog: `🎰 ルーレットマスに止まった！運命のルーレットを回そう！`,
-                lastLogTimestamp: Date.now(),
-                latestPopup: {
-                    message: `🎰 運命のルーレット！`,
-                    type: 'event',
-                    timestamp: Date.now()
-                }
-            });
-
-        } else {
-            // Check for PvP collision
-            const otherPlayersOnSameTile = currentPlayers.filter(
-                p => p.id !== player.id && p.position === pos
-            );
-
-            if (otherPlayersOnSameTile.length > 0 && !skipBattleCheck) {
-                // Start PvP Battle with the first opponent
-                const opponent = otherPlayersOnSameTile[0];
-                const goldStake = Math.min(100, Math.min(player.gold || 0, opponent.gold || 0) || 50);
-
-                await updateGameState(roomId, {
-                    phase: GamePhase.PVP_BATTLE,
-                    pvpBattleState: {
-                        isActive: true,
-                        challengerId: player.id,
-                        defenderId: opponent.id,
-                        challengerRoll: null,
-                        defenderRoll: null,
-                        winnerId: null,
-                        goldStolen: goldStake,
-                        phase: 'CHALLENGER_ROLL'
-                    },
-                    lastLog: `⚔️ ${player.name} と ${opponent.name} が同じマスで遭遇！PvPバトル開始！`,
-                    lastLogTimestamp: Date.now(),
-                    latestPopup: {
-                        message: `⚔️ PvPバトル発生！`,
-                        type: 'danger',
-                        timestamp: Date.now()
-                    }
-                });
-            } else {
-                await nextTurn(roomId, currentPlayers, roomState!.activePlayerIndex);
-            }
-        }
-    };
-
-    const handleApplyEvent = async () => {
-        if (!roomId || !roomState || !roomState.currentEvent || isProcessingTurn) return;
-        const player = roomState.players[roomState.activePlayerIndex];
-        // Only active player
-        if (player.id !== myPlayerId) return;
-
-        setIsProcessingTurn(true);
-
-        try {
-            const event = roomState.currentEvent;
-            const val = event.value;
-            let newPlayers = [...roomState.players];
-            let currentPlayer = newPlayers[roomState.activePlayerIndex];
-
-            // Store original pos to calc distance
-            const originalPos = currentPlayer.position;
-
-            if (event.effectType === 'MOVE_FORWARD') {
-                currentPlayer.position = Math.min(BOARD_SIZE - 1, currentPlayer.position + val);
-            } else if (event.effectType === 'MOVE_BACK') {
-                currentPlayer.position = Math.max(0, currentPlayer.position - val);
-            } else if (event.effectType === 'SKIP_TURN') {
-                currentPlayer.turnSkipCount = (currentPlayer.turnSkipCount || 0) + 1;
-            }
-
-            newPlayers[roomState.activePlayerIndex] = currentPlayer;
-
-            await updateGameState(roomId, {
-                players: newPlayers,
-                currentEvent: null,
-                phase: GamePhase.PLAYING,
-                lastLog: `${player.name} はイベントの結果を受け入れました。`,
-                lastLogTimestamp: Date.now()
-            });
-
-            // Dynamic wait if moved
-            if (event.effectType === 'MOVE_FORWARD' || event.effectType === 'MOVE_BACK') {
-                const dist = Math.abs(currentPlayer.position - originalPos);
-                const waitTime = (dist * 500) + 500;
-                await new Promise(r => setTimeout(r, waitTime));
-            } else {
-                await new Promise(r => setTimeout(r, 1500));
-            }
-
-            await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
-        } finally {
-            setIsProcessingTurn(false);
-        }
-    };
-
-    const handleBossBattleComplete = async (result: any) => {
-        if (!roomId || !roomState) return;
-        setShowBossOverlay(false);
-
-        const player = roomState.players[roomState.activePlayerIndex];
-        // const result = bossBattleResult; // Replaced by argument
-
-        setIsProcessingTurn(true);
-
-        try {
-            const bossConfig = getBossConfig(result.finalBossState.type);
-
-            // 1. Update Boss State Global
-            let updates: Partial<RoomState> = {
-                bossState: result.finalBossState,
-                lastLog: result.isVictory
-                    ? `🏆 ${player.name} は ${bossConfig.name} を撃破した！`
-                    : `⚠️ ${player.name} は ${bossConfig.name} に敗北した...`
-            };
-
-            // If victory, add to defeated list
-            if (result.isVictory) {
-                const currentDefeated = roomState.defeatedBosses || [];
-                if (!currentDefeated.includes(bossConfig.type)) {
-                    updates.defeatedBosses = [...currentDefeated, bossConfig.type];
-                }
-            }
-
-            await updateGameState(roomId, updates);
-
-            // 2. Handle Player Result
-            let newPlayers = [...roomState.players];
-            let currentPlayer = { ...newPlayers[roomState.activePlayerIndex] };
-            let shouldTriggerNextTurn = true;
-
-            if (result.isVictory) {
-                currentPlayer.gold = (currentPlayer.gold || 0) + result.goldReward;
-                newPlayers[roomState.activePlayerIndex] = currentPlayer;
-
-                await updateGameState(roomId, {
-                    players: newPlayers,
-                    latestPopup: {
-                        message: `🏆 BOSS撃破！ +${result.goldReward}G`,
-                        type: 'success',
-                        timestamp: Date.now()
-                    }
-                });
-
-                await new Promise(r => setTimeout(r, 1000));
-            } else {
-                // --- HANDLE SPECIAL EFFECTS (Zaraki, Rariho, Mahotone) ---
-                if (result.specialEffect) {
-                    const eff = result.specialEffect;
-                    if (eff.type === 'ZARAKI') {
-                        currentPlayer.position = 0;
-                        await updateGameState(roomId, {
-                            latestPopup: { message: `💀 ザラキで振り出しに戻された！`, type: 'danger', timestamp: Date.now() }
-                        });
-                    } else if (eff.type === 'RARIHO') {
-                        currentPlayer.turnSkipCount = (currentPlayer.turnSkipCount || 0) + (eff.value || 0);
-                        await updateGameState(roomId, {
-                            latestPopup: { message: `💤 ラリホーで${eff.value}ターン休み！`, type: 'danger', timestamp: Date.now() }
-                        });
-                    } else if (eff.type === 'MAHOTONE') {
-                        // Set sealTurns (e.g., 2)
-                        currentPlayer.sealTurns = (currentPlayer.sealTurns || 0) + (eff.value || 0);
-                        await updateGameState(roomId, {
-                            latestPopup: { message: `🤐 マホトーンで封印された！`, type: 'danger', timestamp: Date.now() }
-                        });
-                    }
-                }
-
-                // Normal Pushback (if not Zaraki'd already to 0)
-                if (!result.specialEffect || result.specialEffect.type !== 'ZARAKI') {
-                    if (result.stepsBack > 0) {
-                        const originalPos = currentPlayer.position;
-                        const newPos = Math.max(0, currentPlayer.position - result.stepsBack);
-                        currentPlayer.position = newPos;
-
-                        await updateGameState(roomId, {
-                            latestPopup: {
-                                message: `💥 ${result.stepsBack}マス 吹き飛ばされた！`,
-                                type: 'danger',
-                                timestamp: Date.now()
-                            }
-                        });
-
-                        const dist = Math.abs(newPos - originalPos);
-                        const waitTime = (dist * 500) + 500;
-                        await new Promise(r => setTimeout(r, waitTime));
-                    }
-                }
-
-                newPlayers[roomState.activePlayerIndex] = currentPlayer;
-                await updateGameState(roomId, { players: newPlayers });
-            }
-
-            if (shouldTriggerNextTurn) {
-                await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsProcessingTurn(false);
-            setBossBattleResult(null);
-        }
-    };
-
-    // --- Battle Handlers ---
-
-    const handleBattleRoll = async () => {
-        if (!roomId || !roomState || !roomState.battleState?.monster || isBattleRolling) return;
-
-        const player = roomState.players[roomState.activePlayerIndex];
-        if (player.id !== myPlayerId) return;
-
-        setIsBattleRolling(true);
-
-        try {
-            const roll = Math.floor(Math.random() * 6) + 1;
-            const monster = roomState.battleState.monster;
-            const isVictory = roll >= monster.hp;
-
-            // Randomize Monster Attack Type (Flavor)
-            const attackTypes = ['physical', 'magic', 'breath'];
-            const randomType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
-            let attackName = "通常攻撃";
-            if (randomType === 'magic') attackName = "魔法攻撃";
-            if (randomType === 'breath') attackName = "ブレス攻撃";
-
-            // Update battle state with roll result
-            await updateGameState(roomId, {
-                battleState: {
-                    ...roomState.battleState,
-                    playerRoll: roll,
-                    result: isVictory ? 'victory' : 'defeat',
-                    goldEarned: isVictory ? monster.goldReward : 0,
-                    tilesBack: isVictory ? 0 : monster.attack,
-                },
-                lastLog: `🎲 ${player.name} の攻撃！ 出目: ${roll} -> ${isVictory ? '勝利！' : `敗北... ${monster.name}の${attackName}！`}`,
-                lastLogTimestamp: Date.now()
-            });
-
-            await new Promise(r => setTimeout(r, 3000));
-        } catch (error: any) {
-            console.error("Battle roll failed:", error);
-            triggerPopup(`エラーが発生しました: ${error.message || '不明なエラー'}`, 'danger');
-        } finally {
-            setIsBattleRolling(false);
-        }
-    };
-
-    const handleBattleEnd = async () => {
-        if (!roomId || !roomState || !roomState.battleState || isProcessingTurn) return;
-
-        const player = roomState.players[roomState.activePlayerIndex];
-        if (player.id !== myPlayerId) return;
-
-        setIsProcessingTurn(true);
-
-        try {
-            const battleState = roomState.battleState;
-            const isVictory = battleState.result === 'victory';
-
-            let newPlayers = [...roomState.players];
-            let currentPlayer = { ...newPlayers[roomState.activePlayerIndex] };
-            const originalPos = currentPlayer.position;
-
-            if (isVictory) {
-                // Add gold reward
-                currentPlayer.gold = (currentPlayer.gold || 0) + battleState.goldEarned;
-                newPlayers[roomState.activePlayerIndex] = currentPlayer;
-
-                await updateGameState(roomId, {
-                    players: newPlayers,
-                    battleState: null,
-                    phase: GamePhase.PLAYING,
-                    lastLog: `🎉 ${player.name} は ${battleState.monster?.name} を倒し、${battleState.goldEarned}G を獲得！`,
-                    lastLogTimestamp: Date.now(),
-                    latestPopup: {
-                        message: `🎉 勝利！ +${battleState.goldEarned}G`,
-                        type: 'success',
-                        timestamp: Date.now()
-                    }
-                });
-
-                await new Promise(r => setTimeout(r, 1000));
-                await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
-
-            } else {
-                // Move player back
-                const newPos = Math.max(0, currentPlayer.position - battleState.tilesBack);
-                currentPlayer.position = newPos;
-                newPlayers[roomState.activePlayerIndex] = currentPlayer;
-
-                await updateGameState(roomId, {
-                    players: newPlayers,
-                    battleState: null,
-                    phase: GamePhase.PLAYING,
-                    lastLog: `💥 ${player.name} は ${battleState.monster?.name} に敗北し、${battleState.tilesBack}マス後退！`,
-                    lastLogTimestamp: Date.now(),
-                    latestPopup: {
-                        message: `💥 敗北！ ${battleState.tilesBack}マス後退`,
-                        type: 'danger',
-                        timestamp: Date.now()
-                    }
-                });
-
-                // Wait for movement animation
-                const dist = Math.abs(newPos - originalPos);
-                const waitTime = (dist * 500) + 500;
-                await new Promise(r => setTimeout(r, waitTime));
-
-                // After damage movement, do NOT trigger tile effects (skip battle check)
-                await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
-            }
-        } finally {
-            setIsProcessingTurn(false);
-        }
-    };
-
-    // --- Roulette Handlers ---
-
-    const handleRouletteSpin = async () => {
-        if (!roomId || !roomState || isRouletteSpinning) return;
-        const player = roomState.players[roomState.activePlayerIndex];
-        if (player.id !== myPlayerId) return;
-
-        setIsRouletteSpinning(true);
-
-        try {
-            // Start spinning animation
-            await updateGameState(roomId, {
-                rouletteState: {
-                    isSpinning: true,
-                    selectedEffect: null,
-                    spinStartTime: Date.now()
-                }
-            });
-
-            // Wait for animation to build suspense
-            await new Promise(r => setTimeout(r, 3000));
-
-            // Select random effect
-            const effect = getRandomRouletteEffect();
-
-            // Stop spinning and show result
-            await updateGameState(roomId, {
-                rouletteState: {
-                    isSpinning: false,
-                    selectedEffect: effect,
-                    spinStartTime: Date.now()
-                },
-                lastLog: `🎰 ${player.name} のルーレット結果: ${effect.name}！`,
-                lastLogTimestamp: Date.now()
-            });
-        } finally {
-            setIsRouletteSpinning(false);
-        }
-    };
-
-    const handleRouletteComplete = async (effect: RouletteEffect) => {
-        if (!roomId || !roomState || isProcessingTurn) return;
-        const player = roomState.players[roomState.activePlayerIndex];
-        if (player.id !== myPlayerId) return;
-
-        setIsProcessingTurn(true);
-
-        try {
-            let newPlayers = [...roomState.players];
-            let currentPlayer = { ...newPlayers[roomState.activePlayerIndex] };
-            const originalPos = currentPlayer.position;
-
-            // Apply effect based on type
-            switch (effect.effectType) {
-                case 'MOVE_FORWARD':
-                    currentPlayer.position = Math.min(BOARD_SIZE - 1, currentPlayer.position + effect.value);
-                    break;
-                case 'MOVE_BACK':
-                    currentPlayer.position = Math.max(0, currentPlayer.position - effect.value);
-                    break;
-                case 'GOLD_GAIN':
-                case 'JACKPOT':
-                    currentPlayer.gold = (currentPlayer.gold || 0) + effect.value;
-                    break;
-                case 'GOLD_LOSE':
-                    currentPlayer.gold = Math.max(0, (currentPlayer.gold || 0) - effect.value);
-                    break;
-                case 'TELEPORT_RANDOM':
-                    currentPlayer.position = Math.floor(Math.random() * (BOARD_SIZE - 2)) + 1;
-                    break;
-                case 'SWAP_POSITION':
-                    if (newPlayers.length > 1) {
-                        const others = newPlayers.filter(p => p.id !== currentPlayer.id);
-                        const randomOpponent = others[Math.floor(Math.random() * others.length)];
-                        const tempPos = currentPlayer.position;
-                        currentPlayer.position = randomOpponent.position;
-                        newPlayers = newPlayers.map(p => p.id === randomOpponent.id ? { ...p, position: tempPos } : p);
-                    }
-                    break;
-                case 'CURSE':
-                    currentPlayer.turnSkipCount = (currentPlayer.turnSkipCount || 0) + effect.value;
-                    break;
-                case 'NOTHING':
-                default:
-                    break;
-            }
-
-            newPlayers[roomState.activePlayerIndex] = currentPlayer;
-
-            await updateGameState(roomId, {
-                players: newPlayers,
-                phase: GamePhase.PLAYING,
-                rouletteState: null,
-                lastLog: `🎰 ${effect.name}: ${effect.description}`,
-                lastLogTimestamp: Date.now(),
-                latestPopup: {
-                    message: `${effect.emoji} ${effect.name}`,
-                    type: ['MOVE_FORWARD', 'GOLD_GAIN', 'JACKPOT'].includes(effect.effectType) ? 'success' : 'danger',
-                    timestamp: Date.now()
-                }
-            });
-
-            // Wait for any movement animation
-            const dist = Math.abs(currentPlayer.position - originalPos);
-            if (dist > 0) {
-                const waitTime = (dist * 500) + 500;
-                await new Promise(r => setTimeout(r, waitTime));
-            }
-
-            await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
-        } finally {
-            setIsProcessingTurn(false);
-        }
-    };
-
-    // --- PvP Battle Handlers ---
-
-    const handlePvPRoll = async () => {
-        if (!roomId || !roomState || !roomState.pvpBattleState || isPvPRolling) return;
-
-        const pvpState = roomState.pvpBattleState;
-        const isChallenger = myPlayerId === pvpState.challengerId;
-        const isDefender = myPlayerId === pvpState.defenderId;
-
-        // Check if it's our turn to roll
-        const canRoll =
-            (pvpState.phase === 'CHALLENGER_ROLL' && isChallenger) ||
-            (pvpState.phase === 'DEFENDER_ROLL' && isDefender);
-
-        if (!canRoll) return;
-
-        setIsPvPRolling(true);
-
-        try {
-            const roll = Math.floor(Math.random() * 6) + 1;
-
-            if (pvpState.phase === 'CHALLENGER_ROLL') {
-                await updateGameState(roomId, {
-                    pvpBattleState: {
-                        ...pvpState,
-                        challengerRoll: roll,
-                        phase: 'DEFENDER_ROLL'
-                    },
-                    lastLog: `🎲 チャレンジャーの出目: ${roll}`,
-                    lastLogTimestamp: Date.now()
-                });
-            } else {
-                // Defender rolled, determine winner
-                const challengerRoll = pvpState.challengerRoll!;
-                const winnerId = roll > challengerRoll ? pvpState.defenderId :
-                    roll < challengerRoll ? pvpState.challengerId : null; // Tie goes to challenger
-
-                await updateGameState(roomId, {
-                    pvpBattleState: {
-                        ...pvpState,
-                        defenderRoll: roll,
-                        winnerId: winnerId ?? pvpState.challengerId, // Tie goes to challenger
-                        phase: 'RESULT'
-                    },
-                    lastLog: `🎲 ディフェンダーの出目: ${roll}`,
-                    lastLogTimestamp: Date.now()
-                });
-            }
-
-            await new Promise(r => setTimeout(r, 1500));
-        } finally {
-            setIsPvPRolling(false);
-        }
-    };
-
-    const handlePvPComplete = async () => {
-        if (!roomId || !roomState || !roomState.pvpBattleState || isProcessingTurn) return;
-
-        const pvpState = roomState.pvpBattleState;
-        if (pvpState.phase !== 'RESULT' || pvpState.winnerId === null) return;
-
-        setIsProcessingTurn(true);
-
-        try {
-            let newPlayers = [...roomState.players];
-            const winnerIndex = newPlayers.findIndex(p => p.id === pvpState.winnerId);
-            const loserIndex = newPlayers.findIndex(p => p.id === (pvpState.winnerId === pvpState.challengerId ? pvpState.defenderId : pvpState.challengerId));
-
-            if (winnerIndex !== -1 && loserIndex !== -1) {
-                const actualGoldStolen = Math.min(pvpState.goldStolen, newPlayers[loserIndex].gold || 0);
-                newPlayers[winnerIndex] = {
-                    ...newPlayers[winnerIndex],
-                    gold: (newPlayers[winnerIndex].gold || 0) + actualGoldStolen
-                };
-                newPlayers[loserIndex] = {
-                    ...newPlayers[loserIndex],
-                    gold: Math.max(0, (newPlayers[loserIndex].gold || 0) - actualGoldStolen)
-                };
-
-                await updateGameState(roomId, {
-                    players: newPlayers,
-                    phase: GamePhase.PLAYING,
-                    pvpBattleState: null,
-                    lastLog: `⚔️ ${newPlayers[winnerIndex].name} が勝利！${actualGoldStolen}G を獲得！`,
-                    lastLogTimestamp: Date.now(),
-                    latestPopup: {
-                        message: `⚔️ ${newPlayers[winnerIndex].name} の勝利！`,
-                        type: 'success',
-                        timestamp: Date.now()
-                    }
-                });
-            } else {
-                await updateGameState(roomId, {
-                    phase: GamePhase.PLAYING,
-                    pvpBattleState: null
-                });
-            }
-
-            await nextTurn(roomId, newPlayers, roomState.activePlayerIndex);
-        } finally {
-            setIsProcessingTurn(false);
-        }
+        // Normal tile: just proceed to next turn
+        await nextTurn(roomId, currentPlayers, roomState!.activePlayerIndex);
     };
 
 
@@ -1102,94 +309,6 @@ const App: React.FC = () => {
                 isVisible={showPopup}
             />
 
-            {/* --- Boss Battle Overlay --- */}
-            {showBossOverlay && (
-                <BossBattleOverlay
-                    initialBossState={roomState.bossState || {
-                        type: 'BELIAL',
-                        currentHp: 20,
-                        maxHp: 20,
-                        isDefeated: false,
-                        isSkaraActive: false,
-                        logs: []
-                    }}
-                    player={activePlayer}
-                    onComplete={(result) => {
-                        setBossBattleResult(result);
-                        handleBossBattleComplete(result);
-                    }}
-                />
-            )}
-
-            {/* --- Battle Modal --- */}
-            <BattleModal
-                isOpen={roomState.phase === GamePhase.BATTLE && !!roomState.battleState}
-                monster={roomState.battleState?.monster || null}
-                playerName={activePlayer.name}
-                isMyTurn={isMyTurn}
-                battleState={roomState.battleState || {
-                    isActive: false,
-                    monster: null,
-                    playerRoll: null,
-                    result: null,
-                    goldEarned: 0,
-                    tilesBack: 0
-                }}
-                onRollDice={handleBattleRoll}
-                onClose={handleBattleEnd}
-                isRolling={isBattleRolling}
-            />
-
-            {/* --- Roulette Modal --- */}
-            <RouletteModal
-                isOpen={roomState.phase === GamePhase.ROULETTE}
-                isMyTurn={isMyTurn}
-                playerName={activePlayer.name}
-                onSpin={handleRouletteSpin}
-                onComplete={handleRouletteComplete}
-                selectedEffect={roomState.rouletteState?.selectedEffect || null}
-                isSpinning={roomState.rouletteState?.isSpinning || false}
-            />
-
-            {/* --- PvP Battle Modal --- */}
-            <PvPBattleModal
-                isOpen={roomState.phase === GamePhase.PVP_BATTLE && !!roomState.pvpBattleState}
-                battleState={roomState.pvpBattleState || null}
-                challenger={roomState.pvpBattleState ? roomState.players.find(p => p.id === roomState.pvpBattleState?.challengerId) || null : null}
-                defender={roomState.pvpBattleState ? roomState.players.find(p => p.id === roomState.pvpBattleState?.defenderId) || null : null}
-                myPlayerId={myPlayerId}
-                onRoll={handlePvPRoll}
-                onComplete={handlePvPComplete}
-                isRolling={isPvPRolling}
-            />
-
-            {/* --- Item Modal (Simple) --- */}
-            {showItemModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowItemModal(false)}>
-                    <div className="bg-slate-800 border border-slate-600 p-6 rounded-2xl w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold text-white mb-4">持ち物</h3>
-                        <div className="space-y-3">
-                            {ITEMS.map(item => (
-                                <div key={item.id} className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 flex items-center justify-between opacity-50 cursor-not-allowed">
-                                    <div>
-                                        <p className="font-bold text-slate-300">{item.name}</p>
-                                        <p className="text-xs text-slate-500">{item.description}</p>
-                                    </div>
-                                    <button disabled className="px-3 py-1 bg-slate-600 text-slate-400 text-xs rounded">使用</button>
-                                </div>
-                            ))}
-                            <p className="text-center text-xs text-slate-500 mt-4">※ アイテムはまだ持っていません</p>
-                        </div>
-                        <button
-                            onClick={() => setShowItemModal(false)}
-                            className="mt-6 w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 font-bold"
-                        >
-                            閉じる
-                        </button>
-                    </div>
-                </div>
-            )}
-
             {/* --- Game Scene (Background) --- */}
             <div className="absolute inset-0 z-0">
                 <GameScene
@@ -1214,7 +333,7 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            {/* --- HUD: Bottom Right Menu Button (RELOCATED) --- */}
+            {/* --- HUD: Bottom Right Menu Button --- */}
             <button
                 onClick={() => setShowInfoPanel(!showInfoPanel)}
                 className="fixed bottom-6 right-6 z-50 p-4 bg-slate-800 hover:bg-slate-700 text-white rounded-full shadow-xl border border-slate-600 transition-all active:scale-95"
@@ -1267,9 +386,6 @@ const App: React.FC = () => {
                                         </div>
                                         <div className="text-xs text-slate-500 flex items-center gap-2 mt-1">
                                             <span>マス: {p.position}</span>
-                                            <span className="text-yellow-400">💰 {p.gold || 0}G</span>
-                                            {p.turnSkipCount && p.turnSkipCount > 0 ? <span className="text-red-400">💤 休み ({p.turnSkipCount})</span> : null}
-                                            {p.sealTurns > 0 && <span className="text-purple-400">🤐 封印 ({p.sealTurns})</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -1321,8 +437,6 @@ const App: React.FC = () => {
                     </div>
                 )}
 
-                {/* --- MAIN ACTION WINDOW (Only when needed) --- */}
-
                 {/* 1. Dice Roll Window */}
                 {roomState.phase === GamePhase.PLAYING && isMyTurn && !isRolling && !isProcessingTurn && !isBoardBusy && (
                     <div className="pointer-events-auto bg-slate-900/90 backdrop-blur-xl border border-indigo-500/50 rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-slide-up relative overflow-hidden">
@@ -1331,32 +445,16 @@ const App: React.FC = () => {
 
                         <div className="text-center mb-4">
                             <h3 className="text-lg font-bold text-white">あなたのターン</h3>
-                            <p className="text-slate-400 text-sm">行動を選択してください</p>
+                            <p className="text-slate-400 text-sm">サイコロを振ってください</p>
                         </div>
 
-                        <div className="flex gap-2">
-                            <button
-                                onClick={handleRollDice}
-                                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-lg font-bold py-4 rounded-xl shadow-lg transform transition-all active:scale-95 border border-white/10 flex items-center justify-center gap-2"
-                            >
-                                <span className="text-2xl">🎲</span>
-                                サイコロ
-                            </button>
-
-                            <button
-                                onClick={() => {
-                                    if (activePlayer.sealTurns && activePlayer.sealTurns > 0) {
-                                        triggerPopup('封印されているためアイテムを使えません！', 'danger');
-                                    } else {
-                                        setShowItemModal(true);
-                                    }
-                                }}
-                                className={`flex-none w-20 ${activePlayer.sealTurns && activePlayer.sealTurns > 0 ? 'bg-slate-700 grayscale cursor-not-allowed opacity-50' : 'bg-slate-700 hover:bg-slate-600'} text-white font-bold rounded-xl shadow-lg transition-all active:scale-95 border border-white/10 flex flex-col items-center justify-center p-2`}
-                            >
-                                <span className="text-xl">🎒</span>
-                                <span className="text-[10px]">アイテム</span>
-                            </button>
-                        </div>
+                        <button
+                            onClick={handleRollDice}
+                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-lg font-bold py-4 rounded-xl shadow-lg transform transition-all active:scale-95 border border-white/10 flex items-center justify-center gap-2"
+                        >
+                            <span className="text-2xl">🎲</span>
+                            サイコロを振る
+                        </button>
                     </div>
                 )}
 
@@ -1366,53 +464,6 @@ const App: React.FC = () => {
                         <div className="text-5xl animate-bounce mb-3">🎲</div>
                         <h3 className="font-bold text-blue-300 text-lg">運命のダイスロール...</h3>
                         <p className="text-slate-400 text-xs mt-1">結果を待っています</p>
-                    </div>
-                )}
-
-                {/* 3. Event Processing Window */}
-                {roomState.phase === GamePhase.EVENT_PROCESSING && roomState.currentEvent && (
-                    <div className="pointer-events-auto w-full max-w-md bg-slate-900/95 backdrop-blur-xl p-0 rounded-2xl border border-purple-500 shadow-2xl animate-slide-up relative overflow-hidden">
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-purple-900 to-slate-900 p-4 border-b border-purple-500/30 flex items-center gap-3">
-                            <span className="text-2xl">🔮</span>
-                            <div>
-                                <h3 className="text-lg font-bold text-purple-200">イベント発生</h3>
-                                <p className="text-purple-400/80 text-xs uppercase tracking-wider">EVENT CARD</p>
-                            </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-6 text-center">
-                            <h4 className="text-xl font-bold text-white mb-2">{roomState.currentEvent.title}</h4>
-                            <p className="text-slate-300 mb-6 italic bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                                "{roomState.currentEvent.description}"
-                            </p>
-
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 rounded-full border border-purple-500/30 text-xs font-bold text-purple-300 mb-6 uppercase tracking-wider">
-                                <span>効果:</span>
-                                <span className="text-white">
-                                    {
-                                        roomState.currentEvent.effectType === 'MOVE_FORWARD' ? '進む' :
-                                            roomState.currentEvent.effectType === 'MOVE_BACK' ? '戻る' :
-                                                roomState.currentEvent.effectType === 'SKIP_TURN' ? '一回休み' : 'なし'
-                                    }
-                                    {roomState.currentEvent.value > 0 && ` (${roomState.currentEvent.value})`}
-                                </span>
-                            </div>
-
-                            {isMyTurn ? (
-                                <button
-                                    onClick={handleApplyEvent}
-                                    className="w-full py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 border border-purple-400/20"
-                                >
-                                    結果を受け入れる
-                                </button>
-                            ) : (
-                                <div className="text-center text-slate-500 animate-pulse bg-slate-900/50 py-3 rounded-lg text-sm border border-slate-700">
-                                    {activePlayer.name} の選択を待っています...
-                                </div>
-                            )}
-                        </div>
                     </div>
                 )}
             </div>

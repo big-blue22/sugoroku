@@ -16,10 +16,6 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
     switch (type) {
       case TileType.START: return '#3b82f6'; // Blue
       case TileType.GOAL: return '#fbbf24'; // Gold
-      case TileType.GOOD: return '#fbbf24'; // Gold/Yellow
-      case TileType.BAD: return '#ef4444'; // Red
-      case TileType.EVENT: return '#a855f7'; // Purple
-      case TileType.ROULETTE: return '#f59e0b'; // Amber/Orange
       default:
         // Default color based on theme
         switch (theme) {
@@ -36,10 +32,6 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
   };
 
   const getGeometry = () => {
-    // Different shapes for themes?
-    // For now, consistent Cylinder is best for gameplay clarity,
-    // but we can vary the "Base Marker" slightly.
-    // e.g. Box for Magma/Cave?
     const isBoxy = theme === 'magma' || theme === 'cave' || theme === 'hargon';
 
     if (isBoxy) {
@@ -52,10 +44,6 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
     switch (type) {
       case TileType.START: return 'START';
       case TileType.GOAL: return 'GOAL';
-      case TileType.GOOD: return 'LUCKY';
-      case TileType.BAD: return 'TRAP';
-      case TileType.EVENT: return 'EVENT';
-      case TileType.ROULETTE: return 'SPIN';
       default: return '';
     }
   };
@@ -64,10 +52,6 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
     switch (type) {
       case TileType.START: return '🏁';
       case TileType.GOAL: return '🏆';
-      case TileType.GOOD: return '⭐';
-      case TileType.BAD: return '💀';
-      case TileType.EVENT: return '❓';
-      case TileType.ROULETTE: return '🎰';
       default: return null;
     }
   };
@@ -92,7 +76,7 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
 
       {/* Text Label (lying on surface) */}
       <Text
-        position={[0, 0.17, 0.8]} // Positioned slightly forward
+        position={[0, 0.17, 0.8]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={0.4}
         color="white"
@@ -105,7 +89,7 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
       {/* Floating Icon */}
       {icon && (
         <Text
-          position={[0, 1.5, 0]} // Floating above
+          position={[0, 1.5, 0]}
           fontSize={1.5}
           color="white"
           anchorX="center"

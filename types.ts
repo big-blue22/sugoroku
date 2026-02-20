@@ -1,106 +1,40 @@
 export enum TileType {
   START = 'START',
   NORMAL = 'NORMAL',
-  GOOD = 'GOOD',
-  BAD = 'BAD',
-  EVENT = 'EVENT', // AI Generated Event
-  ROULETTE = 'ROULETTE', // New: Roulette Destiny
   GOAL = 'GOAL'
 }
 
 export enum GamePhase {
   SETUP = 'SETUP',
   PLAYING = 'PLAYING',
-  EVENT_PROCESSING = 'EVENT_PROCESSING',
-  BATTLE = 'BATTLE',
-  ROULETTE = 'ROULETTE',
-  PVP_BATTLE = 'PVP_BATTLE',
   GAME_OVER = 'GAME_OVER'
 }
 
 export type PopupType = 'info' | 'success' | 'danger' | 'event';
-export type DamageType = 'physical' | 'magic' | 'breath';
 
 export interface Player {
   id: number;
   name: string;
-  color: string; // Tailwind color class prefix e.g. 'red'
-  avatar: string; // Emoji
+  color: string;
+  avatar: string;
   position: number;
-  skipNextTurn?: boolean; // @deprecated Use turnSkipCount
-  turnSkipCount: number; // Number of turns to skip
-  sealTurns: number; // Number of turns items/magic are sealed
-  items: string[]; // List of item IDs/names
   isWinner: boolean;
-  gold: number; // Player's gold/currency
-}
-
-// Monster Definition
-export interface Monster {
-  name: string;
-  hp: number;
-  attack: number; // Number of tiles to move back on defeat
-  goldReward: number;
-  emoji: string;
-  isSpecialAttack?: boolean; // For special attack calculation (e.g., Killer Machine)
-}
-
-// Battle State (Regular Monsters)
-export interface BattleState {
-  isActive: boolean;
-  monster: Monster | null;
-  playerRoll: number | null;
-  result: 'pending' | 'victory' | 'defeat' | null;
-  goldEarned: number;
-  tilesBack: number;
 }
 
 export interface Tile {
   id: number;
   type: TileType;
   label?: string;
-  effectValue?: number; // e.g., +3 or -2
-}
-
-export interface GameEvent {
-  title: string;
-  description: string;
-  effectType: 'MOVE_FORWARD' | 'MOVE_BACK' | 'SKIP_TURN' | 'NOTHING';
-  value: number;
-}
-
-// --- Boss Battle Types ---
-export interface BossLog {
-  turn: number;
-  actor: 'player' | 'boss';
-  action: string;
-  value?: number; // Damage or Heal amount
-  description: string;
-  currentBossHp?: number; // Snapshot for UI
-  isCritical?: boolean;
-  damageType?: DamageType;
-}
-
-export type BossType = 'BELIAL' | 'BAZUZU' | 'ATLAS' | 'BELIAL_REMATCH';
-
-export interface BossState {
-  type: BossType; // Identify which boss this is
-  currentHp: number;
-  maxHp: number;
-  isDefeated: boolean;
-  isSkaraActive: boolean; // 0.5x damage taken (Belial specific, but harmless to keep)
-  isChargeActive?: boolean; // 2x damage dealt next turn (Atlas specific)
-  logs: BossLog[];
 }
 
 // --- Firebase / Multiplayer Types ---
 
 export interface RoomState {
-  id: string; // Room Code (e.g. "ABCD")
-  hostId: string; // ID of the player who created the room (for "Start Game" permission)
+  id: string;
+  hostId: string;
   status: 'WAITING' | 'PLAYING';
   createdAt: number;
-  lastActivityAt?: number; // Last activity timestamp for TTL management
+  lastActivityAt?: number;
 
   // Game State (Synced)
   players: Player[];
@@ -109,68 +43,10 @@ export interface RoomState {
 
   // Action Syncing
   diceValue: number | null;
-  diceRollCount: number; // Increment to trigger animation on clients
-  currentEvent: GameEvent | null;
+  diceRollCount: number;
   latestPopup?: { message: string; type: PopupType; timestamp: number } | null;
 
-  // Battle State
-  battleState?: BattleState | null;
-
-  // Boss State (Global Persistence)
-  bossState?: BossState;
-
-  // Track defeated bosses to prevent re-triggering (or allow re-fight logic if needed)
-  defeatedBosses?: string[]; // e.g., ['BELIAL', 'BAZUZU']
-
   // Logs
-  lastLog: string | null; // Latest log message to append
+  lastLog: string | null;
   lastLogTimestamp: number;
-
-  // --- Phase 1 Features ---
-
-  // Roulette State
-  rouletteState?: RouletteState | null;
-
-  // PvP Battle State
-  pvpBattleState?: PvPBattleState | null;
-}
-
-// --- Roulette Destiny Types ---
-export type RouletteEffectType =
-  | 'MOVE_FORWARD'
-  | 'MOVE_BACK'
-  | 'GOLD_GAIN'
-  | 'GOLD_LOSE'
-  | 'TELEPORT_RANDOM'
-  | 'SWAP_POSITION'
-  | 'SHIELD'
-  | 'CURSE'
-  | 'JACKPOT'
-  | 'NOTHING';
-
-export interface RouletteEffect {
-  id: string;
-  name: string;
-  emoji: string;
-  effectType: RouletteEffectType;
-  value: number;
-  description: string;
-}
-
-export interface RouletteState {
-  isSpinning: boolean;
-  selectedEffect: RouletteEffect | null;
-  spinStartTime: number;
-}
-
-// --- PvP Battle Types ---
-export interface PvPBattleState {
-  isActive: boolean;
-  challengerId: number;       // Player who triggered the battle
-  defenderId: number;         // Player being challenged
-  challengerRoll: number | null;
-  defenderRoll: number | null;
-  winnerId: number | null;
-  goldStolen: number;
-  phase: 'WAITING' | 'CHALLENGER_ROLL' | 'DEFENDER_ROLL' | 'RESULT';
 }
