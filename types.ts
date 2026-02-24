@@ -1,14 +1,16 @@
-export enum TileType {
-  START = 'START',
-  NORMAL = 'NORMAL',
-  GOAL = 'GOAL'
-}
+export const TileType = {
+  START: 'START',
+  NORMAL: 'NORMAL',
+  GOAL: 'GOAL'
+} as const;
+export type TileType = typeof TileType[keyof typeof TileType];
 
-export enum GamePhase {
-  SETUP = 'SETUP',
-  PLAYING = 'PLAYING',
-  GAME_OVER = 'GAME_OVER'
-}
+export const GamePhase = {
+  SETUP: 'SETUP',
+  PLAYING: 'PLAYING',
+  GAME_OVER: 'GAME_OVER'
+} as const;
+export type GamePhase = typeof GamePhase[keyof typeof GamePhase];
 
 export type PopupType = 'info' | 'success' | 'danger' | 'event';
 
