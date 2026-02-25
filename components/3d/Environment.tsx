@@ -40,7 +40,7 @@ const Environment: React.FC = () => {
 
             // 2. Generate Children (Bridge Blocks + Pillars + Decorations)
             let bridgeLength = (zIdx === 0) ? 0 : 3;
-            if (zIdx !== 0 && (zone.themeId === 'magma' || zone.themeId === 'underwater' || zone.themeId === 'rhone' || zone.themeId === 'hargon')) {
+            if (zIdx !== 0 && (zone.themeId === 'magma' || zone.themeId === 'underwater' || zone.themeId === 'cave' || zone.themeId === 'rhone' || zone.themeId === 'hargon')) {
                 bridgeLength = 8;
             }
 
