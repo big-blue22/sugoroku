@@ -93,6 +93,7 @@ const generateCoordinates = (): Coordinate3D[] => {
     // Fix for overlapping maps: Increase bridge length for specific zones
     if (zone.themeId === 'magma') bridgeLength = 8;
     if (zone.themeId === 'underwater') bridgeLength = 8;
+    if (zone.themeId === 'cave') bridgeLength = 8;
     if (zone.themeId === 'rhone') bridgeLength = 8;
     if (zone.themeId === 'hargon') bridgeLength = 8;
 
