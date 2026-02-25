@@ -1,6 +1,6 @@
 import { TileType } from './types';
 
-export const BOARD_SIZE = 216;
+export const BOARD_SIZE = 357;
 export const GRID_SCALE = 4.0;
 export const ROW_LENGTH = 12; // Number of tiles per row
 
@@ -23,13 +23,13 @@ export interface ZoneConfig {
 }
 
 export const ZONES: ZoneConfig[] = [
-  { name: '草原', start: 0, end: 20, themeId: 'grass' },
-  { name: '妖精の宮殿', start: 21, end: 40, themeId: 'fairy' },
-  { name: 'マグマ洞窟', start: 41, end: 70, themeId: 'magma' },
-  { name: '海中のほこら', start: 71, end: 100, themeId: 'underwater' },
-  { name: '洞窟', start: 101, end: 130, themeId: 'cave' },
-  { name: 'ロンダルキア', start: 131, end: 170, themeId: 'rhone' },
-  { name: 'ハーゴンの教会', start: 171, end: 216, themeId: 'hargon' }
+  { name: '草原', start: 0, end: 40, themeId: 'grass' },
+  { name: '妖精の宮殿', start: 41, end: 80, themeId: 'fairy' },
+  { name: 'マグマ洞窟', start: 81, end: 130, themeId: 'magma' },
+  { name: '海中のほこら', start: 131, end: 180, themeId: 'underwater' },
+  { name: '洞窟', start: 181, end: 230, themeId: 'cave' },
+  { name: 'ロンダルキア', start: 231, end: 290, themeId: 'rhone' },
+  { name: 'ハーゴンの教会', start: 291, end: 356, themeId: 'hargon' }
 ];
 
 export const getZoneForIndex = (index: number): ZoneConfig => {
