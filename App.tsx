@@ -176,6 +176,7 @@ const App: React.FC = () => {
 
             setTimeout(() => {
                 setIsRolling(false);
+                triggerPopup(`🎲 ${roomState.diceValue} が出た！`, 'info', 2000);
             }, 2000);
         }
     }, [roomState?.diceRollCount, roomState?.diceValue]);
