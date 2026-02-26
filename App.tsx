@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GamePhase, Player, Tile, TileType, RoomState, INITIAL_PLAYER_STATS } from './types';
 import SetupScreen from './components/SetupScreen';
 import Popup, { PopupType } from './components/Popup';
 import GameScene from './components/3d/GameScene';
+import BattleScreen from './components/BattleScreen';
 import {
     subscribeToRoom,
     startGame,
@@ -11,9 +12,9 @@ import {
 } from './services/roomService';
 import { BOARD_SIZE, getTileInfo } from './constants';
 import { BOARD_FROM_CONFIG } from './boardConfig';
-import { simulateSoloBattle, checkLevelUp } from './services/battleEngine';
+import { checkLevelUp } from './services/battleEngine';
 import { resolveTreasure, resolveTrap, getVillageStartPosition } from './services/tileEvents';
-import { getRandomMonsterForZone, getBossForZone } from './data/monsters';
+import { getRandomMonsterForZone, getBossForZone, MonsterDef } from './data/monsters';
 
 const buildBoard = (): Tile[] => {
     return BOARD_FROM_CONFIG;
@@ -63,6 +64,17 @@ const App: React.FC = () => {
     const [isRolling, setIsRolling] = useState(false);
     const [isProcessingTurn, setIsProcessingTurn] = useState(false);
     const [isBoardBusy, setIsBoardBusy] = useState(false);
+
+    // Battle UI State
+    const [activeBattle, setActiveBattle] = useState<{
+        monster: MonsterDef;
+        isMimic?: boolean;
+    } | null>(null);
+    const pendingBattleContext = useRef<{
+        pos: number;
+        player: Player;
+        currentPlayers: Player[];
+    } | null>(null);
 
     // Track last processed popup to avoid duplication
     const lastProcessedPopupTime = useRef<number>(0);
@@ -294,62 +306,16 @@ const App: React.FC = () => {
                 return;
             }
             case TileType.MONSTER: {
-                // ソロ戦闘
+                // 対話型戦闘を開始
                 const monster = getRandomMonsterForZone(zoneNum);
                 if (!monster) {
                     await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
                     return;
                 }
-                const battleResult = simulateSoloBattle(currentPlayer.stats, monster);
-
-                if (battleResult.victory) {
-                    // 勝利: 報酬獲得
-                    let newStats = {
-                        ...currentPlayer.stats,
-                        hp: battleResult.playerHpAfter,
-                        mp: battleResult.playerMpAfter,
-                        gold: currentPlayer.stats.gold + battleResult.goldReward,
-                        exp: currentPlayer.stats.exp + battleResult.expReward,
-                    };
-                    // レベルアップチェック
-                    const lvCheck = checkLevelUp(newStats);
-                    if (lvCheck.leveled) {
-                        newStats = {
-                            ...lvCheck.newStats,
-                            maxHp: lvCheck.newStats.maxHp + 6,
-                            hp: Math.min(lvCheck.newStats.hp + 6, lvCheck.newStats.maxHp + 6),
-                            maxMp: lvCheck.newStats.maxMp + 2,
-                            mp: Math.min(lvCheck.newStats.mp + 2, lvCheck.newStats.maxMp + 2),
-                            atk: lvCheck.newStats.atk + 1,
-                            def: lvCheck.newStats.def + 1,
-                            spd: lvCheck.newStats.spd + 1,
-                        };
-                    }
-                    updatedPlayers = updatedPlayers.map(p =>
-                        p.id === player.id ? { ...p, stats: newStats } : p
-                    );
-                    const lvMsg = lvCheck.leveled ? ` レベルアップ！ Lv.${newStats.level}！` : '';
-                    await updateGameState(roomId, {
-                        players: updatedPlayers,
-                        lastLog: `⚔️ ${player.name} は ${monster.name} を倒した！ ${battleResult.goldReward}G ${battleResult.expReward}EXP 獲得！${lvMsg}`,
-                        lastLogTimestamp: Date.now(),
-                        latestPopup: { message: `⚔️ ${monster.name} を倒した！ +${battleResult.goldReward}G +${battleResult.expReward}EXP${lvMsg}`, type: 'success', timestamp: Date.now() }
-                    });
-                } else {
-                    // 敗北: 村に強制移動 + HP/MP全回復
-                    const villagePos = getVillageStartPosition(pos);
-                    updatedPlayers = updatedPlayers.map(p =>
-                        p.id === player.id ? { ...p, position: villagePos, stats: { ...p.stats, hp: p.stats.maxHp, mp: p.stats.maxMp } } : p
-                    );
-                    await updateGameState(roomId, {
-                        players: updatedPlayers,
-                        lastLog: `💀 ${player.name} は ${monster.name} に敗北... 村に戻された！`,
-                        lastLogTimestamp: Date.now(),
-                        latestPopup: { message: `💀 ${monster.name} に敗北... 村に戻された！`, type: 'danger', timestamp: Date.now() }
-                    });
-                }
-                await new Promise(r => setTimeout(r, 2500));
-                await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                // Store context for when battle ends
+                pendingBattleContext.current = { pos, player, currentPlayers: updatedPlayers };
+                setActiveBattle({ monster });
+                // Don't proceed to next turn yet - wait for battle to end
                 return;
             }
             case TileType.TREASURE: {
@@ -455,61 +421,14 @@ const App: React.FC = () => {
                 return;
             }
             case TileType.BOSS: {
-                // ボス戦（ソロ戦闘として暫定実装）
+                // 対話型ボス戦闘を開始
                 const boss = getBossForZone(zoneNum);
                 if (!boss) {
                     await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
                     return;
                 }
-                const battleResult = simulateSoloBattle(currentPlayer.stats, boss);
-
-                if (battleResult.victory) {
-                    // ボス報酬（ソロなので全額）
-                    let newStats = {
-                        ...currentPlayer.stats,
-                        hp: battleResult.playerHpAfter,
-                        mp: battleResult.playerMpAfter,
-                        gold: currentPlayer.stats.gold + battleResult.goldReward,
-                        exp: currentPlayer.stats.exp + battleResult.expReward,
-                    };
-                    const lvCheck = checkLevelUp(newStats);
-                    if (lvCheck.leveled) {
-                        newStats = {
-                            ...lvCheck.newStats,
-                            maxHp: lvCheck.newStats.maxHp + 6,
-                            hp: Math.min(lvCheck.newStats.hp + 6, lvCheck.newStats.maxHp + 6),
-                            maxMp: lvCheck.newStats.maxMp + 2,
-                            mp: Math.min(lvCheck.newStats.mp + 2, lvCheck.newStats.maxMp + 2),
-                            atk: lvCheck.newStats.atk + 1,
-                            def: lvCheck.newStats.def + 1,
-                            spd: lvCheck.newStats.spd + 1,
-                        };
-                    }
-                    updatedPlayers = updatedPlayers.map(p =>
-                        p.id === player.id ? { ...p, stats: newStats } : p
-                    );
-                    const lvMsg = lvCheck.leveled ? ` レベルアップ！ Lv.${newStats.level}！` : '';
-                    await updateGameState(roomId, {
-                        players: updatedPlayers,
-                        lastLog: `👑 ${player.name} は ${boss.name} を撃破！ ${battleResult.goldReward}G ${battleResult.expReward}EXP 獲得！${lvMsg}`,
-                        lastLogTimestamp: Date.now(),
-                        latestPopup: { message: `👑 ${boss.name} を撃破！ +${battleResult.goldReward}G +${battleResult.expReward}EXP${lvMsg}`, type: 'success', timestamp: Date.now() }
-                    });
-                } else {
-                    // ボス敗北: 村に強制移動
-                    const villagePos = getVillageStartPosition(pos);
-                    updatedPlayers = updatedPlayers.map(p =>
-                        p.id === player.id ? { ...p, position: villagePos, stats: { ...p.stats, hp: p.stats.maxHp, mp: p.stats.maxMp } } : p
-                    );
-                    await updateGameState(roomId, {
-                        players: updatedPlayers,
-                        lastLog: `💀 ${player.name} は ${boss.name} に敗北... 村に戻された！`,
-                        lastLogTimestamp: Date.now(),
-                        latestPopup: { message: `💀 ${boss.name} に敗北... 村に戻された！`, type: 'danger', timestamp: Date.now() }
-                    });
-                }
-                await new Promise(r => setTimeout(r, 2500));
-                await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                pendingBattleContext.current = { pos, player, currentPlayers: updatedPlayers };
+                setActiveBattle({ monster: boss });
                 return;
             }
             case TileType.EMPTY:
@@ -520,11 +439,108 @@ const App: React.FC = () => {
         }
     };
 
+    // --- Battle End Callback ---
+    const handleBattleEnd = useCallback(async (result: {
+        victory: boolean;
+        playerHpAfter: number;
+        playerMpAfter: number;
+        goldReward: number;
+        expReward: number;
+    }) => {
+        const ctx = pendingBattleContext.current;
+        if (!ctx || !roomId || !roomState) {
+            setActiveBattle(null);
+            return;
+        }
+
+        const { pos, player, currentPlayers } = ctx;
+        let updatedPlayers = [...currentPlayers];
+        const monsterName = activeBattle?.monster.name || 'モンスター';
+        const isBoss = activeBattle?.monster.isBoss || false;
+
+        if (result.victory) {
+            let newStats = {
+                ...player.stats,
+                hp: result.playerHpAfter,
+                mp: result.playerMpAfter,
+                gold: player.stats.gold + result.goldReward,
+                exp: player.stats.exp + result.expReward,
+            };
+            const lvCheck = checkLevelUp(newStats);
+            if (lvCheck.leveled) {
+                newStats = {
+                    ...lvCheck.newStats,
+                    maxHp: lvCheck.newStats.maxHp + 6,
+                    hp: Math.min(lvCheck.newStats.hp + 6, lvCheck.newStats.maxHp + 6),
+                    maxMp: lvCheck.newStats.maxMp + 2,
+                    mp: Math.min(lvCheck.newStats.mp + 2, lvCheck.newStats.maxMp + 2),
+                    atk: lvCheck.newStats.atk + 1,
+                    def: lvCheck.newStats.def + 1,
+                    spd: lvCheck.newStats.spd + 1,
+                };
+            }
+            updatedPlayers = updatedPlayers.map(p =>
+                p.id === player.id ? { ...p, stats: newStats } : p
+            );
+            const lvMsg = lvCheck.leveled ? ` レベルアップ！ Lv.${newStats.level}！` : '';
+            const icon = isBoss ? '👑' : '⚔️';
+            await updateGameState(roomId, {
+                players: updatedPlayers,
+                lastLog: `${icon} ${player.name} は ${monsterName} を${isBoss ? '撃破' : '倒した'}！ ${result.goldReward}G ${result.expReward}EXP 獲得！${lvMsg}`,
+                lastLogTimestamp: Date.now(),
+                latestPopup: {
+                    message: `${icon} ${monsterName} を${isBoss ? '撃破' : '倒した'}！ +${result.goldReward}G +${result.expReward}EXP${lvMsg}`,
+                    type: 'success',
+                    timestamp: Date.now()
+                }
+            });
+        } else {
+            const villagePos = getVillageStartPosition(pos);
+            updatedPlayers = updatedPlayers.map(p =>
+                p.id === player.id ? {
+                    ...p,
+                    position: villagePos,
+                    stats: { ...p.stats, hp: p.stats.maxHp, mp: p.stats.maxMp }
+                } : p
+            );
+            await updateGameState(roomId, {
+                players: updatedPlayers,
+                lastLog: `💀 ${player.name} は ${monsterName} に敗北... 村に戻された！`,
+                lastLogTimestamp: Date.now(),
+                latestPopup: {
+                    message: `💀 ${monsterName} に敗北... 村に戻された！`,
+                    type: 'danger',
+                    timestamp: Date.now()
+                }
+            });
+        }
+
+        setActiveBattle(null);
+        pendingBattleContext.current = null;
+        setIsProcessingTurn(false);
+
+        await nextTurn(roomId, updatedPlayers, roomState.activePlayerIndex);
+    }, [roomId, roomState, activeBattle]);
+
 
     // --- Render ---
 
     if (!roomId || !roomState) {
         return <SetupScreen onJoinGame={handleJoinGame} />;
+    }
+
+    // Show battle screen if in battle
+    if (activeBattle && pendingBattleContext.current) {
+        const ctx = pendingBattleContext.current;
+        return (
+            <BattleScreen
+                playerStats={ctx.player.stats}
+                monster={activeBattle.monster}
+                playerSpells={[]}
+                isMimic={activeBattle.isMimic}
+                onBattleEnd={handleBattleEnd}
+            />
+        );
     }
 
     // Lobby
