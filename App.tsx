@@ -258,7 +258,11 @@ const App: React.FC = () => {
             setIsRolling(false);
             triggerPopup(`エラーが発生しました: ${error.message || '不明なエラー'}`, 'danger');
         } finally {
-            setIsProcessingTurn(false);
+            // Don't reset if we're in a battle (battle end callback will handle it)
+            if (!pendingBattleContext.current) {
+                setIsProcessingTurn(false);
+                setIsRolling(false);
+            }
         }
     };
 
@@ -518,6 +522,8 @@ const App: React.FC = () => {
         setActiveBattle(null);
         pendingBattleContext.current = null;
         setIsProcessingTurn(false);
+        setIsRolling(false);
+        setIsBoardBusy(false);
 
         await nextTurn(roomId, updatedPlayers, roomState.activePlayerIndex);
     }, [roomId, roomState, activeBattle]);
