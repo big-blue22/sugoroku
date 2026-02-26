@@ -12,7 +12,7 @@ import {
   getDocs,
   writeBatch
 } from 'firebase/firestore';
-import { RoomState, Player, GamePhase } from '../types';
+import { RoomState, Player, GamePhase, INITIAL_PLAYER_STATS } from '../types';
 
 const ROOMS_COLLECTION = 'rooms';
 const ROOM_TTL_MS = 2 * 24 * 60 * 60 * 1000; // 48 hours (2 days)
@@ -55,7 +55,7 @@ const generateRoomId = () => {
   return result;
 };
 
-export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position' | 'isWinner'>): Promise<{ roomId: string, playerId: number }> => {
+export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position' | 'isWinner' | 'stats'>): Promise<{ roomId: string, playerId: number }> => {
   // Trigger cleanup asynchronously
   cleanupExpiredRooms();
 
@@ -67,6 +67,7 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
     ...hostPlayerConfig,
     position: 0,
     isWinner: false,
+    stats: { ...INITIAL_PLAYER_STATS },
   };
 
   const initialRoomState: RoomState = {
@@ -90,7 +91,7 @@ export const createRoom = async (hostPlayerConfig: Omit<Player, 'id' | 'position
   return { roomId, playerId };
 };
 
-export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' | 'position' | 'isWinner'>): Promise<{ playerId: number } | null> => {
+export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' | 'position' | 'isWinner' | 'stats'>): Promise<{ playerId: number } | null> => {
   const roomRef = doc(db, ROOMS_COLLECTION, roomId);
   const roomSnap = await getDoc(roomRef);
 
@@ -110,6 +111,7 @@ export const joinRoom = async (roomId: string, playerConfig: Omit<Player, 'id' |
     ...playerConfig,
     position: 0,
     isWinner: false,
+    stats: { ...INITIAL_PLAYER_STATS },
   };
 
   const updatedPlayers = [...roomData.players, newPlayer];

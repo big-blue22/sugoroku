@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GamePhase, Player, Tile, TileType, RoomState } from './types';
+import { GamePhase, Player, Tile, TileType, RoomState, INITIAL_PLAYER_STATS } from './types';
 import SetupScreen from './components/SetupScreen';
 import Popup, { PopupType } from './components/Popup';
 import GameScene from './components/3d/GameScene';
@@ -9,13 +9,37 @@ import {
     updateGameState,
     nextTurn
 } from './services/roomService';
-import { BOARD_LAYOUT, BOARD_SIZE } from './constants';
+import { BOARD_SIZE, getTileInfo } from './constants';
+import { BOARD_FROM_CONFIG } from './boardConfig';
 
 const buildBoard = (): Tile[] => {
-    return BOARD_LAYOUT.map((type, index) => ({
-        id: index,
-        type,
-    }));
+    return BOARD_FROM_CONFIG;
+};
+
+// --- Tile Effect Messages ---
+const getTileEffectMessage = (tile: Tile, player: Player): { message: string; type: PopupType } | null => {
+    switch (tile.type) {
+        case TileType.VILLAGE:
+            return { message: `🏠 ${tile.zoneName}の村に到着！ HP/MPが全回復した！`, type: 'success' };
+        case TileType.MONSTER:
+            return { message: `⚔️ モンスターが現れた！`, type: 'danger' };
+        case TileType.TREASURE: {
+            const goldAmount = Math.floor(Math.random() * 200) + 50;
+            return { message: `💰 宝箱を発見！ ${goldAmount}Gを手に入れた！`, type: 'success' };
+        }
+        case TileType.TRAP: {
+            const damage = Math.floor(Math.random() * 10) + 5;
+            return { message: `☠️ 罠にかかった！ ${damage}ダメージ！`, type: 'danger' };
+        }
+        case TileType.CASINO:
+            return { message: `🎰 カジノに到着！`, type: 'event' };
+        case TileType.BOSS:
+            return { message: `👑 ${tile.meta?.bossName || 'ボス'}が立ちはだかる！`, type: 'danger' };
+        case TileType.EMPTY:
+            return null;
+        default:
+            return null;
+    }
 };
 
 const App: React.FC = () => {
@@ -226,8 +250,13 @@ const App: React.FC = () => {
     const handleTileEffect = async (pos: number, player: Player, currentPlayers: Player[]) => {
         if (!roomId) return;
         const tile = board[pos];
+        if (!tile) {
+            await nextTurn(roomId, currentPlayers, roomState!.activePlayerIndex);
+            return;
+        }
 
-        if (tile.type === TileType.GOAL) {
+        // Check for last tile (goal)
+        if (pos === BOARD_SIZE - 1) {
             const winners = currentPlayers.map(p => p.id === player.id ? { ...p, isWinner: true } : p);
             await updateGameState(roomId, {
                 players: winners,
@@ -238,8 +267,109 @@ const App: React.FC = () => {
             return;
         }
 
-        // Normal tile: just proceed to next turn
-        await nextTurn(roomId, currentPlayers, roomState!.activePlayerIndex);
+        // Get tile effect
+        const effect = getTileEffectMessage(tile, player);
+
+        if (effect) {
+            // Apply tile effects
+            let updatedPlayers = [...currentPlayers];
+
+            switch (tile.type) {
+                case TileType.VILLAGE: {
+                    // HP/MP全回復
+                    updatedPlayers = updatedPlayers.map(p =>
+                        p.id === player.id ? {
+                            ...p,
+                            stats: {
+                                ...p.stats,
+                                hp: p.stats.maxHp,
+                                mp: p.stats.maxMp
+                            }
+                        } : p
+                    );
+                    break;
+                }
+                case TileType.TREASURE: {
+                    // GOLDを入手
+                    const goldAmount = Math.floor(Math.random() * 200) + 50;
+                    updatedPlayers = updatedPlayers.map(p =>
+                        p.id === player.id ? {
+                            ...p,
+                            stats: { ...p.stats, gold: p.stats.gold + goldAmount }
+                        } : p
+                    );
+                    break;
+                }
+                case TileType.TRAP: {
+                    // ダメージを受ける
+                    const damage = Math.floor(Math.random() * 10) + 5;
+                    updatedPlayers = updatedPlayers.map(p =>
+                        p.id === player.id ? {
+                            ...p,
+                            stats: {
+                                ...p.stats,
+                                hp: Math.max(1, p.stats.hp - damage)
+                            }
+                        } : p
+                    );
+                    break;
+                }
+                case TileType.MONSTER: {
+                    // TODO: Phase 3で戦闘システム実装
+                    // 仮実装: EXPとGOLD入手
+                    const expGain = Math.floor(Math.random() * 30) + 20;
+                    const goldGain = Math.floor(Math.random() * 100) + 30;
+                    updatedPlayers = updatedPlayers.map(p =>
+                        p.id === player.id ? {
+                            ...p,
+                            stats: {
+                                ...p.stats,
+                                exp: p.stats.exp + expGain,
+                                gold: p.stats.gold + goldGain,
+                            }
+                        } : p
+                    );
+                    break;
+                }
+                case TileType.BOSS: {
+                    // TODO: Phase 3でボス戦システム実装
+                    const bossExpGain = Math.floor(Math.random() * 100) + 200;
+                    const bossGoldGain = Math.floor(Math.random() * 500) + 500;
+                    updatedPlayers = updatedPlayers.map(p =>
+                        p.id === player.id ? {
+                            ...p,
+                            stats: {
+                                ...p.stats,
+                                exp: p.stats.exp + bossExpGain,
+                                gold: p.stats.gold + bossGoldGain,
+                            }
+                        } : p
+                    );
+                    break;
+                }
+            }
+
+            // Send popup and update state
+            await updateGameState(roomId, {
+                players: updatedPlayers,
+                lastLog: effect.message,
+                lastLogTimestamp: Date.now(),
+                latestPopup: {
+                    message: effect.message,
+                    type: effect.type,
+                    timestamp: Date.now()
+                }
+            });
+
+            // Wait for popup to show
+            await new Promise(r => setTimeout(r, 2000));
+
+            // Next turn
+            await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+        } else {
+            // Empty tile - just proceed to next turn
+            await nextTurn(roomId, currentPlayers, roomState!.activePlayerIndex);
+        }
     };
 
 
@@ -300,6 +430,7 @@ const App: React.FC = () => {
     // Game View
     const activePlayer = roomState.players[roomState.activePlayerIndex];
     const isMyTurn = activePlayer.id === myPlayerId;
+    const myPlayer = roomState.players.find(p => p.id === myPlayerId);
 
     return (
         <div className="relative w-screen h-screen overflow-hidden bg-slate-900 text-slate-100 font-sans">
@@ -321,16 +452,34 @@ const App: React.FC = () => {
                 />
             </div>
 
-            {/* --- HUD: Top Left Room Info --- */}
-            <div className="absolute top-4 left-4 z-10 flex items-center gap-3 animate-fade-in pointer-events-none">
+            {/* --- HUD: Top Left Room Info + Player Stats --- */}
+            <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 animate-fade-in pointer-events-none">
                 <div className="bg-slate-800/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-600 shadow-xl flex items-center gap-3">
                     <span className="text-xs text-slate-400">ID: <span className="font-mono font-bold text-blue-300 text-sm">{roomId}</span></span>
                     <span className="w-px h-4 bg-slate-600"></span>
                     <div className="flex items-center gap-2">
-                        <span className="text-lg">{roomState.players.find(p => p.id === myPlayerId)?.avatar}</span>
+                        <span className="text-lg">{myPlayer?.avatar}</span>
                         <span className="text-sm font-bold truncate max-w-[120px]">{myPlayerName}</span>
                     </div>
                 </div>
+                {/* Player Stats HUD */}
+                {myPlayer && (
+                    <div className="bg-slate-800/80 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-600 shadow-xl">
+                        <div className="flex items-center gap-3 text-xs">
+                            <span className="text-red-400">❤️ {myPlayer.stats.hp}/{myPlayer.stats.maxHp}</span>
+                            <span className="text-blue-400">💧 {myPlayer.stats.mp}/{myPlayer.stats.maxMp}</span>
+                            <span className="text-yellow-400">💰 {myPlayer.stats.gold}G</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
+                            <span>Lv.{myPlayer.stats.level}</span>
+                            <span>ATK:{myPlayer.stats.atk}</span>
+                            <span>DEF:{myPlayer.stats.def}</span>
+                            <span>SPD:{myPlayer.stats.spd}</span>
+                            <span>INT:{myPlayer.stats.int}</span>
+                            <span>EXP:{myPlayer.stats.exp}</span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* --- HUD: Bottom Right Menu Button --- */}
@@ -386,6 +535,9 @@ const App: React.FC = () => {
                                         </div>
                                         <div className="text-xs text-slate-500 flex items-center gap-2 mt-1">
                                             <span>マス: {p.position}</span>
+                                            <span className="text-red-400">HP:{p.stats.hp}</span>
+                                            <span className="text-yellow-400">{p.stats.gold}G</span>
+                                            <span>Lv.{p.stats.level}</span>
                                         </div>
                                     </div>
                                 </div>

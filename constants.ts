@@ -1,6 +1,7 @@
 import { TileType } from './types';
+import { BOARD_FROM_CONFIG, BOARD_SIZE_FROM_CONFIG } from './boardConfig';
 
-export const BOARD_SIZE = 357;
+export const BOARD_SIZE = BOARD_SIZE_FROM_CONFIG;
 export const GRID_SCALE = 4.0;
 export const ROW_LENGTH = 12; // Number of tiles per row
 
@@ -36,16 +37,14 @@ export const getZoneForIndex = (index: number): ZoneConfig => {
   return ZONES.find(z => index >= z.start && index <= z.end) || ZONES[0];
 };
 
-// --- Tile Layout Generation ---
-const generateLayout = (): TileType[] => {
-  const layout: TileType[] = Array(BOARD_SIZE).fill(TileType.NORMAL);
-  layout[0] = TileType.START;
-  layout[BOARD_SIZE - 1] = TileType.GOAL;
-  return layout;
+// --- Tile Layout ---
+// Board layout is now driven by BoardConfig_v1.json
+export const BOARD_LAYOUT = BOARD_FROM_CONFIG.map(t => t.type);
+
+// Helper to get tile info from board config
+export const getTileInfo = (index: number) => {
+  return BOARD_FROM_CONFIG[index] || null;
 };
-
-export const BOARD_LAYOUT: TileType[] = generateLayout();
-
 
 // --- 3D Path Generation ---
 interface Coordinate3D {

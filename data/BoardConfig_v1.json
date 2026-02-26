@@ -1,0 +1,2978 @@
+{
+  "version": "v1",
+  "seed": "CID-board-v1-2026-02-26",
+  "tile_legend": {
+    "VILLAGE": "🏠村",
+    "BOSS": "👑ボス",
+    "MONSTER": "⚔️モンスター",
+    "TREASURE": "💰宝箱",
+    "TRAP": "☠️罠",
+    "EMPTY": "⛺空",
+    "CASINO": "🎰カジノ"
+  },
+  "zones": [
+    {
+      "zone": "Z1",
+      "start": 0,
+      "end": 40,
+      "name": "草原"
+    },
+    {
+      "zone": "Z2",
+      "start": 41,
+      "end": 80,
+      "name": "妖精の宮殿"
+    },
+    {
+      "zone": "Z3",
+      "start": 81,
+      "end": 130,
+      "name": "マグマ洞窟"
+    },
+    {
+      "zone": "Z4",
+      "start": 131,
+      "end": 180,
+      "name": "海中のほこら"
+    },
+    {
+      "zone": "Z5",
+      "start": 181,
+      "end": 230,
+      "name": "洞窟"
+    },
+    {
+      "zone": "Z6",
+      "start": 231,
+      "end": 290,
+      "name": "ロンダルキア"
+    },
+    {
+      "zone": "Z7",
+      "start": 291,
+      "end": 356,
+      "name": "ハーゴンの教会"
+    }
+  ],
+  "z7_boss_tiles": [
+    {
+      "id": 327,
+      "boss_name": "アトラス"
+    },
+    {
+      "id": 353,
+      "boss_name": "バズズ"
+    },
+    {
+      "id": 354,
+      "boss_name": "ベリアル"
+    },
+    {
+      "id": 355,
+      "boss_name": "ハーゴン"
+    },
+    {
+      "id": 356,
+      "boss_name": "シドー"
+    }
+  ],
+  "tiles": [
+    {
+      "id": 0,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "VILLAGE",
+      "tile_label": "🏠村",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 1,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 2,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 3,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 4,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 5,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 6,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 7,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 8,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 9,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 10,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 11,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 12,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 13,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 14,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 15,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 16,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 17,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 18,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 19,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 20,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 21,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 22,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 23,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 24,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 25,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 26,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 27,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "CASINO",
+      "tile_label": "🎰カジノ",
+      "meta": {}
+    },
+    {
+      "id": 28,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 29,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 30,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 31,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 32,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 33,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 34,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 35,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 36,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 37,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 38,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 39,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 40,
+      "zone": "Z1",
+      "zone_name": "草原",
+      "tile_key": "BOSS",
+      "tile_label": "👑ボス",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 41,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "VILLAGE",
+      "tile_label": "🏠村",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 42,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 43,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 44,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 45,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 46,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 47,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 48,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 49,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 50,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 51,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "CASINO",
+      "tile_label": "🎰カジノ",
+      "meta": {}
+    },
+    {
+      "id": 52,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 53,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 54,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 55,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 56,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 57,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 58,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 59,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 60,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 61,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 62,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 63,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 64,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 65,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 66,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 67,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 68,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 69,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 70,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 71,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 72,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 73,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 74,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 75,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 76,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 77,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 78,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 79,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 80,
+      "zone": "Z2",
+      "zone_name": "妖精の宮殿",
+      "tile_key": "BOSS",
+      "tile_label": "👑ボス",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 81,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "VILLAGE",
+      "tile_label": "🏠村",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 82,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 83,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 84,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 85,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 86,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 87,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 88,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 89,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 90,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 91,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 92,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 93,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 94,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "CASINO",
+      "tile_label": "🎰カジノ",
+      "meta": {}
+    },
+    {
+      "id": 95,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 96,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 97,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 98,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 99,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 100,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 101,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 102,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 103,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 104,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 105,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 106,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 107,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 108,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 109,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 110,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 111,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 112,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 113,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 114,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 115,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 116,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 117,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 118,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 119,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 120,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 121,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 122,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 123,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 124,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 125,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 126,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 127,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 128,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 129,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 130,
+      "zone": "Z3",
+      "zone_name": "マグマ洞窟",
+      "tile_key": "BOSS",
+      "tile_label": "👑ボス",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 131,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "VILLAGE",
+      "tile_label": "🏠村",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 132,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 133,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 134,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 135,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 136,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 137,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 138,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 139,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 140,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 141,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "CASINO",
+      "tile_label": "🎰カジノ",
+      "meta": {}
+    },
+    {
+      "id": 142,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 143,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 144,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 145,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 146,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 147,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 148,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 149,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 150,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 151,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 152,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 153,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 154,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 155,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 156,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 157,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 158,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 159,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 160,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 161,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 162,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 163,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 164,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 165,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 166,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 167,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 168,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 169,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 170,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 171,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 172,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 173,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 174,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 175,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 176,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 177,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 178,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 179,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 180,
+      "zone": "Z4",
+      "zone_name": "海中のほこら",
+      "tile_key": "BOSS",
+      "tile_label": "👑ボス",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 181,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "VILLAGE",
+      "tile_label": "🏠村",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 182,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 183,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 184,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 185,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 186,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 187,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 188,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 189,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 190,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 191,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 192,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 193,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 194,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 195,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 196,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 197,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 198,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 199,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 200,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 201,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 202,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 203,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 204,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 205,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 206,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 207,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 208,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 209,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 210,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 211,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 212,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 213,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 214,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 215,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 216,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 217,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 218,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 219,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 220,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 221,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "CASINO",
+      "tile_label": "🎰カジノ",
+      "meta": {}
+    },
+    {
+      "id": 222,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 223,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 224,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 225,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 226,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 227,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 228,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 229,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 230,
+      "zone": "Z5",
+      "zone_name": "洞窟",
+      "tile_key": "BOSS",
+      "tile_label": "👑ボス",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 231,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "VILLAGE",
+      "tile_label": "🏠村",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 232,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 233,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 234,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 235,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 236,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 237,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 238,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 239,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 240,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 241,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 242,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 243,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 244,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 245,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 246,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 247,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 248,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 249,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 250,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 251,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 252,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 253,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 254,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 255,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 256,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 257,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 258,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "CASINO",
+      "tile_label": "🎰カジノ",
+      "meta": {}
+    },
+    {
+      "id": 259,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 260,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 261,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 262,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 263,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 264,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 265,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 266,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 267,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 268,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 269,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 270,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 271,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 272,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 273,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 274,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 275,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 276,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 277,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "CASINO",
+      "tile_label": "🎰カジノ",
+      "meta": {}
+    },
+    {
+      "id": 278,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 279,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 280,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 281,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 282,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 283,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 284,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 285,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 286,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 287,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 288,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 289,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "MONSTER",
+      "tile_label": "⚔️モンスター",
+      "meta": {}
+    },
+    {
+      "id": 290,
+      "zone": "Z6",
+      "zone_name": "ロンダルキア",
+      "tile_key": "BOSS",
+      "tile_label": "👑ボス",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 291,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "VILLAGE",
+      "tile_label": "🏠村",
+      "meta": {
+        "forced": true
+      }
+    },
+    {
+      "id": 292,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 293,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 294,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 295,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 296,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 297,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 298,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 299,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 300,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 301,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 302,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 303,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 304,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 305,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 306,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 307,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 308,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 309,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 310,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 311,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 312,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 313,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 314,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 315,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 316,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 317,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 318,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 319,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 320,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 321,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 322,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 323,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 324,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 325,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 326,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 327,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "BOSS",
+      "tile_label": "👑ボス",
+      "meta": {
+        "forced": true,
+        "boss_name": "アトラス"
+      }
+    },
+    {
+      "id": 328,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 329,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 330,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 331,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 332,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 333,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 334,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 335,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 336,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 337,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 338,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 339,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 340,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 341,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 342,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 343,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 344,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 345,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TREASURE",
+      "tile_label": "💰宝箱",
+      "meta": {}
+    },
+    {
+      "id": 346,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 347,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "TRAP",
+      "tile_label": "☠️罠",
+      "meta": {}
+    },
+    {
+      "id": 348,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 349,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 350,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 351,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 352,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "EMPTY",
+      "tile_label": "⛺空",
+      "meta": {}
+    },
+    {
+      "id": 353,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "BOSS",
+      "tile_label": "👑ボス",
+      "meta": {
+        "forced": true,
+        "boss_name": "バズズ"
+      }
+    },
+    {
+      "id": 354,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "BOSS",
+      "tile_label": "👑ボス",
+      "meta": {
+        "forced": true,
+        "boss_name": "ベリアル"
+      }
+    },
+    {
+      "id": 355,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "BOSS",
+      "tile_label": "👑ボス",
+      "meta": {
+        "forced": true,
+        "boss_name": "ハーゴン"
+      }
+    },
+    {
+      "id": 356,
+      "zone": "Z7",
+      "zone_name": "ハーゴンの教会",
+      "tile_key": "BOSS",
+      "tile_label": "👑ボス",
+      "meta": {
+        "forced": true,
+        "boss_name": "シドー"
+      }
+    }
+  ]
+}

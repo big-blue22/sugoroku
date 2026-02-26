@@ -1,7 +1,12 @@
+// --- Tile Types (from BoardConfig_v1) ---
 export enum TileType {
-  START = 'START',
-  NORMAL = 'NORMAL',
-  GOAL = 'GOAL'
+  VILLAGE = 'VILLAGE',
+  BOSS = 'BOSS',
+  MONSTER = 'MONSTER',
+  TREASURE = 'TREASURE',
+  TRAP = 'TRAP',
+  EMPTY = 'EMPTY',
+  CASINO = 'CASINO',
 }
 
 export enum GamePhase {
@@ -12,6 +17,35 @@ export enum GamePhase {
 
 export type PopupType = 'info' | 'success' | 'danger' | 'event';
 
+// --- Player ---
+export interface PlayerStats {
+  hp: number;
+  maxHp: number;
+  mp: number;
+  maxMp: number;
+  atk: number;
+  def: number;
+  spd: number;
+  int: number;
+  level: number;
+  exp: number;
+  gold: number;
+}
+
+export const INITIAL_PLAYER_STATS: PlayerStats = {
+  hp: 40,
+  maxHp: 40,
+  mp: 12,
+  maxMp: 12,
+  atk: 14,
+  def: 22,
+  spd: 14,
+  int: 12,
+  level: 1,
+  exp: 0,
+  gold: 0,
+};
+
 export interface Player {
   id: number;
   name: string;
@@ -19,12 +53,19 @@ export interface Player {
   avatar: string;
   position: number;
   isWinner: boolean;
+  stats: PlayerStats;
 }
 
 export interface Tile {
   id: number;
   type: TileType;
-  label?: string;
+  zone: string;
+  zoneName: string;
+  label: string;
+  meta?: {
+    forced?: boolean;
+    bossName?: string;
+  };
 }
 
 // --- Firebase / Multiplayer Types ---

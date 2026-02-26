@@ -14,13 +14,18 @@ interface Tile3DProps {
 const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
   const getBaseColor = () => {
     switch (type) {
-      case TileType.START: return '#3b82f6'; // Blue
-      case TileType.GOAL: return '#fbbf24'; // Gold
+      case TileType.VILLAGE: return '#22c55e'; // Green
+      case TileType.BOSS: return '#dc2626'; // Red
+      case TileType.MONSTER: return '#f97316'; // Orange
+      case TileType.TREASURE: return '#eab308'; // Gold
+      case TileType.TRAP: return '#a855f7'; // Purple
+      case TileType.CASINO: return '#ec4899'; // Pink/Neon
+      case TileType.EMPTY:
       default:
-        // Lighter colors with higher contrast for better visibility
+        // Zone-based colors for empty tiles
         switch (theme) {
           case 'grass': return '#cbd5e1'; // Bright Slate
-          case 'magma': return '#fca5a5'; // Light red/pinkish instead of dark brown/red
+          case 'magma': return '#fca5a5'; // Light red/pinkish
           case 'underwater': return '#67e8f9'; // Bright Cyan
           case 'cave': return '#94a3b8'; // Medium bright slate
           case 'rhone': return '#ffffff'; // Pure White
@@ -32,11 +37,18 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
   };
 
   const getEmissive = () => {
-    if (type === TileType.START) return '#1d4ed8'; // Emissive Blue
-    if (type === TileType.GOAL) return '#d97706'; // Emissive Gold
-    // Add a very subtle self-illumination to all normal path tiles so they pop out
-    return getBaseColor();
+    switch (type) {
+      case TileType.VILLAGE: return '#15803d';
+      case TileType.BOSS: return '#b91c1c';
+      case TileType.MONSTER: return '#c2410c';
+      case TileType.TREASURE: return '#a16207';
+      case TileType.TRAP: return '#7e22ce';
+      case TileType.CASINO: return '#be185d';
+      default: return getBaseColor();
+    }
   };
+
+  const isSpecial = type !== TileType.EMPTY;
 
   const getGeometry = () => {
     const isBoxy = theme === 'magma' || theme === 'cave' || theme === 'hargon';
@@ -49,21 +61,28 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
 
   const getLabel = () => {
     switch (type) {
-      case TileType.START: return 'START';
-      case TileType.GOAL: return 'GOAL';
+      case TileType.VILLAGE: return '村';
+      case TileType.BOSS: return 'BOSS';
+      case TileType.MONSTER: return '';
+      case TileType.TREASURE: return '';
+      case TileType.TRAP: return '';
+      case TileType.CASINO: return 'CASINO';
       default: return '';
     }
   };
 
   const getIcon = () => {
     switch (type) {
-      case TileType.START: return '🏁';
-      case TileType.GOAL: return '🏆';
+      case TileType.VILLAGE: return '🏠';
+      case TileType.BOSS: return '👑';
+      case TileType.MONSTER: return '⚔️';
+      case TileType.TREASURE: return '💰';
+      case TileType.TRAP: return '☠️';
+      case TileType.CASINO: return '🎰';
       default: return null;
     }
   };
 
-  const isSpecial = type === TileType.START || type === TileType.GOAL;
   const icon = getIcon();
 
   return (
@@ -82,9 +101,9 @@ const Tile3D: React.FC<Tile3DProps> = ({ type, x, y, z, index, theme }) => {
             <meshStandardMaterial
               color={getBaseColor()}
               emissive={getEmissive()}
-              emissiveIntensity={isSpecial ? 0.8 : 0.2} // 0.2 gives normal tiles a slight visibility boost
-              roughness={isSpecial ? 0.2 : 0.5} // slightly smoother for better light catch
-              metalness={isSpecial ? 0.5 : 0.1}
+              emissiveIntensity={isSpecial ? 0.6 : 0.2}
+              roughness={isSpecial ? 0.3 : 0.5}
+              metalness={isSpecial ? 0.4 : 0.1}
             />
           </mesh>
 
