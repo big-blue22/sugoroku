@@ -99,9 +99,9 @@ const Environment: React.FC = () => {
 
             return (
                 <group key={zone.name}>
-                    {/* Main Island Plate */}
-                    <mesh receiveShadow position={[centerX, baseY - 2, centerZ]}>
-                        <boxGeometry args={[width, 4, depth]} />
+                    {/* Main Island Plate - positioned well below tiles to prevent burying */}
+                    <mesh receiveShadow position={[centerX, baseY - 4, centerZ]}>
+                        <boxGeometry args={[width, 2, depth]} />
                         <meshStandardMaterial color={color} roughness={0.9} />
                     </mesh>
 
