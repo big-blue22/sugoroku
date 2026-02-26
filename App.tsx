@@ -11,6 +11,9 @@ import {
 } from './services/roomService';
 import { BOARD_SIZE, getTileInfo } from './constants';
 import { BOARD_FROM_CONFIG } from './boardConfig';
+import { simulateSoloBattle, checkLevelUp } from './services/battleEngine';
+import { resolveTreasure, resolveTrap, getVillageStartPosition } from './services/tileEvents';
+import { getRandomMonsterForZone, getBossForZone } from './data/monsters';
 
 const buildBoard = (): Tile[] => {
     return BOARD_FROM_CONFIG;
@@ -267,108 +270,253 @@ const App: React.FC = () => {
             return;
         }
 
-        // Get tile effect
-        const effect = getTileEffectMessage(tile, player);
+        let updatedPlayers = [...currentPlayers];
+        const currentPlayer = updatedPlayers.find(p => p.id === player.id)!;
+        const zoneNum = parseInt(tile.zone.replace('Z', ''));
 
-        if (effect) {
-            // Apply tile effects
-            let updatedPlayers = [...currentPlayers];
-
-            switch (tile.type) {
-                case TileType.VILLAGE: {
-                    // HP/MP全回復
-                    updatedPlayers = updatedPlayers.map(p =>
-                        p.id === player.id ? {
-                            ...p,
-                            stats: {
-                                ...p.stats,
-                                hp: p.stats.maxHp,
-                                mp: p.stats.maxMp
-                            }
-                        } : p
-                    );
-                    break;
-                }
-                case TileType.TREASURE: {
-                    // GOLDを入手
-                    const goldAmount = Math.floor(Math.random() * 200) + 50;
-                    updatedPlayers = updatedPlayers.map(p =>
-                        p.id === player.id ? {
-                            ...p,
-                            stats: { ...p.stats, gold: p.stats.gold + goldAmount }
-                        } : p
-                    );
-                    break;
-                }
-                case TileType.TRAP: {
-                    // ダメージを受ける
-                    const damage = Math.floor(Math.random() * 10) + 5;
-                    updatedPlayers = updatedPlayers.map(p =>
-                        p.id === player.id ? {
-                            ...p,
-                            stats: {
-                                ...p.stats,
-                                hp: Math.max(1, p.stats.hp - damage)
-                            }
-                        } : p
-                    );
-                    break;
-                }
-                case TileType.MONSTER: {
-                    // TODO: Phase 3で戦闘システム実装
-                    // 仮実装: EXPとGOLD入手
-                    const expGain = Math.floor(Math.random() * 30) + 20;
-                    const goldGain = Math.floor(Math.random() * 100) + 30;
-                    updatedPlayers = updatedPlayers.map(p =>
-                        p.id === player.id ? {
-                            ...p,
-                            stats: {
-                                ...p.stats,
-                                exp: p.stats.exp + expGain,
-                                gold: p.stats.gold + goldGain,
-                            }
-                        } : p
-                    );
-                    break;
-                }
-                case TileType.BOSS: {
-                    // TODO: Phase 3でボス戦システム実装
-                    const bossExpGain = Math.floor(Math.random() * 100) + 200;
-                    const bossGoldGain = Math.floor(Math.random() * 500) + 500;
-                    updatedPlayers = updatedPlayers.map(p =>
-                        p.id === player.id ? {
-                            ...p,
-                            stats: {
-                                ...p.stats,
-                                exp: p.stats.exp + bossExpGain,
-                                gold: p.stats.gold + bossGoldGain,
-                            }
-                        } : p
-                    );
-                    break;
-                }
+        switch (tile.type) {
+            case TileType.VILLAGE: {
+                // HP/MP全回復
+                updatedPlayers = updatedPlayers.map(p =>
+                    p.id === player.id ? {
+                        ...p,
+                        stats: { ...p.stats, hp: p.stats.maxHp, mp: p.stats.maxMp }
+                    } : p
+                );
+                await updateGameState(roomId, {
+                    players: updatedPlayers,
+                    lastLog: `🏠 ${player.name} は村に到着！ HP/MPが全回復した！`,
+                    lastLogTimestamp: Date.now(),
+                    latestPopup: { message: `🏠 ${tile.zoneName}の村に到着！ HP/MPが全回復した！`, type: 'success', timestamp: Date.now() }
+                });
+                await new Promise(r => setTimeout(r, 2000));
+                await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                return;
             }
-
-            // Send popup and update state
-            await updateGameState(roomId, {
-                players: updatedPlayers,
-                lastLog: effect.message,
-                lastLogTimestamp: Date.now(),
-                latestPopup: {
-                    message: effect.message,
-                    type: effect.type,
-                    timestamp: Date.now()
+            case TileType.MONSTER: {
+                // ソロ戦闘
+                const monster = getRandomMonsterForZone(zoneNum);
+                if (!monster) {
+                    await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                    return;
                 }
-            });
+                const battleResult = simulateSoloBattle(currentPlayer.stats, monster);
 
-            // Wait for popup to show
-            await new Promise(r => setTimeout(r, 2000));
+                if (battleResult.victory) {
+                    // 勝利: 報酬獲得
+                    let newStats = {
+                        ...currentPlayer.stats,
+                        hp: battleResult.playerHpAfter,
+                        mp: battleResult.playerMpAfter,
+                        gold: currentPlayer.stats.gold + battleResult.goldReward,
+                        exp: currentPlayer.stats.exp + battleResult.expReward,
+                    };
+                    // レベルアップチェック
+                    const lvCheck = checkLevelUp(newStats);
+                    if (lvCheck.leveled) {
+                        newStats = {
+                            ...lvCheck.newStats,
+                            maxHp: lvCheck.newStats.maxHp + 6,
+                            hp: Math.min(lvCheck.newStats.hp + 6, lvCheck.newStats.maxHp + 6),
+                            maxMp: lvCheck.newStats.maxMp + 2,
+                            mp: Math.min(lvCheck.newStats.mp + 2, lvCheck.newStats.maxMp + 2),
+                            atk: lvCheck.newStats.atk + 1,
+                            def: lvCheck.newStats.def + 1,
+                            spd: lvCheck.newStats.spd + 1,
+                        };
+                    }
+                    updatedPlayers = updatedPlayers.map(p =>
+                        p.id === player.id ? { ...p, stats: newStats } : p
+                    );
+                    const lvMsg = lvCheck.leveled ? ` レベルアップ！ Lv.${newStats.level}！` : '';
+                    await updateGameState(roomId, {
+                        players: updatedPlayers,
+                        lastLog: `⚔️ ${player.name} は ${monster.name} を倒した！ ${battleResult.goldReward}G ${battleResult.expReward}EXP 獲得！${lvMsg}`,
+                        lastLogTimestamp: Date.now(),
+                        latestPopup: { message: `⚔️ ${monster.name} を倒した！ +${battleResult.goldReward}G +${battleResult.expReward}EXP${lvMsg}`, type: 'success', timestamp: Date.now() }
+                    });
+                } else {
+                    // 敗北: 村に強制移動 + HP/MP全回復
+                    const villagePos = getVillageStartPosition(pos);
+                    updatedPlayers = updatedPlayers.map(p =>
+                        p.id === player.id ? { ...p, position: villagePos, stats: { ...p.stats, hp: p.stats.maxHp, mp: p.stats.maxMp } } : p
+                    );
+                    await updateGameState(roomId, {
+                        players: updatedPlayers,
+                        lastLog: `💀 ${player.name} は ${monster.name} に敗北... 村に戻された！`,
+                        lastLogTimestamp: Date.now(),
+                        latestPopup: { message: `💀 ${monster.name} に敗北... 村に戻された！`, type: 'danger', timestamp: Date.now() }
+                    });
+                }
+                await new Promise(r => setTimeout(r, 2500));
+                await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                return;
+            }
+            case TileType.TREASURE: {
+                const result = resolveTreasure(currentPlayer, tile);
+                let newStats = { ...currentPlayer.stats };
+                if (result.goldChange) newStats.gold = Math.max(0, newStats.gold + result.goldChange);
+                if (result.hpChange) newStats.hp = Math.min(newStats.maxHp, newStats.hp + result.hpChange);
+                if (result.mpChange) newStats.mp = Math.min(newStats.maxMp, newStats.mp + result.mpChange);
+                // If mimic fight happened
+                if (result.mimicBattle) {
+                    if (result.mimicBattle.victory) {
+                        newStats.hp = result.mimicBattle.playerHpAfter;
+                        newStats.mp = result.mimicBattle.playerMpAfter;
+                        newStats.gold += result.mimicBattle.goldReward;
+                        newStats.exp += result.mimicBattle.expReward;
+                    } else {
+                        const villagePos = getVillageStartPosition(pos);
+                        updatedPlayers = updatedPlayers.map(p =>
+                            p.id === player.id ? { ...p, position: villagePos, stats: { ...p.stats, hp: p.stats.maxHp, mp: p.stats.maxMp } } : p
+                        );
+                        await updateGameState(roomId, {
+                            players: updatedPlayers,
+                            lastLog: `📦 ${player.name} はミミックに敗北... 村に戻された！`,
+                            lastLogTimestamp: Date.now(),
+                            latestPopup: { message: `📦 ミミックに敗北... 村に戻された！`, type: 'danger', timestamp: Date.now() }
+                        });
+                        await new Promise(r => setTimeout(r, 2000));
+                        await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                        return;
+                    }
+                }
+                updatedPlayers = updatedPlayers.map(p =>
+                    p.id === player.id ? { ...p, stats: newStats } : p
+                );
+                await updateGameState(roomId, {
+                    players: updatedPlayers,
+                    lastLog: result.message,
+                    lastLogTimestamp: Date.now(),
+                    latestPopup: { message: result.message, type: result.type === 'mimic' ? 'danger' : 'success', timestamp: Date.now() }
+                });
+                await new Promise(r => setTimeout(r, 2000));
+                await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                return;
+            }
+            case TileType.TRAP: {
+                const result = resolveTrap(currentPlayer, tile);
+                let newStats = { ...currentPlayer.stats };
+                if (result.goldChange) newStats.gold = Math.max(0, newStats.gold + result.goldChange);
+                if (result.hpChange) newStats.hp = Math.max(1, newStats.hp + result.hpChange);
+                let newPos = pos;
+                if (result.positionChange) {
+                    newPos = Math.max(0, pos + result.positionChange);
+                }
+                // If ambush happened
+                if (result.ambushBattle) {
+                    if (result.ambushBattle.victory) {
+                        newStats.hp = result.ambushBattle.playerHpAfter;
+                        newStats.mp = result.ambushBattle.playerMpAfter;
+                        newStats.gold += result.ambushBattle.goldReward;
+                        newStats.exp += result.ambushBattle.expReward;
+                    } else {
+                        newPos = getVillageStartPosition(pos);
+                        newStats = { ...newStats, hp: newStats.maxHp, mp: newStats.maxMp };
+                    }
+                }
+                updatedPlayers = updatedPlayers.map(p =>
+                    p.id === player.id ? { ...p, position: newPos, stats: newStats } : p
+                );
+                await updateGameState(roomId, {
+                    players: updatedPlayers,
+                    lastLog: result.message,
+                    lastLogTimestamp: Date.now(),
+                    latestPopup: { message: result.message, type: 'danger', timestamp: Date.now() }
+                });
+                await new Promise(r => setTimeout(r, 2000));
+                await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                return;
+            }
+            case TileType.CASINO: {
+                // カジノ: 自動で100Gベット
+                if (currentPlayer.stats.gold >= 100) {
+                    const won = Math.random() < 0.5;
+                    const change = won ? 100 : -100;
+                    updatedPlayers = updatedPlayers.map(p =>
+                        p.id === player.id ? { ...p, stats: { ...p.stats, gold: Math.max(0, p.stats.gold + change) } } : p
+                    );
+                    const msg = won ? `🎰 ダブルアップ成功！ 100G 獲得！` : `🎰 ダブルアップ失敗... 100G 失った...`;
+                    await updateGameState(roomId, {
+                        players: updatedPlayers,
+                        lastLog: msg,
+                        lastLogTimestamp: Date.now(),
+                        latestPopup: { message: msg, type: won ? 'success' : 'danger', timestamp: Date.now() }
+                    });
+                } else {
+                    await updateGameState(roomId, {
+                        lastLog: `🎰 ${player.name} はカジノに立ち寄ったが、所持金が足りなかった...`,
+                        lastLogTimestamp: Date.now(),
+                        latestPopup: { message: '🎰 所持金不足... カジノを素通り', type: 'info', timestamp: Date.now() }
+                    });
+                }
+                await new Promise(r => setTimeout(r, 2000));
+                await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                return;
+            }
+            case TileType.BOSS: {
+                // ボス戦（ソロ戦闘として暫定実装）
+                const boss = getBossForZone(zoneNum);
+                if (!boss) {
+                    await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                    return;
+                }
+                const battleResult = simulateSoloBattle(currentPlayer.stats, boss);
 
-            // Next turn
-            await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
-        } else {
-            // Empty tile - just proceed to next turn
-            await nextTurn(roomId, currentPlayers, roomState!.activePlayerIndex);
+                if (battleResult.victory) {
+                    // ボス報酬（ソロなので全額）
+                    let newStats = {
+                        ...currentPlayer.stats,
+                        hp: battleResult.playerHpAfter,
+                        mp: battleResult.playerMpAfter,
+                        gold: currentPlayer.stats.gold + battleResult.goldReward,
+                        exp: currentPlayer.stats.exp + battleResult.expReward,
+                    };
+                    const lvCheck = checkLevelUp(newStats);
+                    if (lvCheck.leveled) {
+                        newStats = {
+                            ...lvCheck.newStats,
+                            maxHp: lvCheck.newStats.maxHp + 6,
+                            hp: Math.min(lvCheck.newStats.hp + 6, lvCheck.newStats.maxHp + 6),
+                            maxMp: lvCheck.newStats.maxMp + 2,
+                            mp: Math.min(lvCheck.newStats.mp + 2, lvCheck.newStats.maxMp + 2),
+                            atk: lvCheck.newStats.atk + 1,
+                            def: lvCheck.newStats.def + 1,
+                            spd: lvCheck.newStats.spd + 1,
+                        };
+                    }
+                    updatedPlayers = updatedPlayers.map(p =>
+                        p.id === player.id ? { ...p, stats: newStats } : p
+                    );
+                    const lvMsg = lvCheck.leveled ? ` レベルアップ！ Lv.${newStats.level}！` : '';
+                    await updateGameState(roomId, {
+                        players: updatedPlayers,
+                        lastLog: `👑 ${player.name} は ${boss.name} を撃破！ ${battleResult.goldReward}G ${battleResult.expReward}EXP 獲得！${lvMsg}`,
+                        lastLogTimestamp: Date.now(),
+                        latestPopup: { message: `👑 ${boss.name} を撃破！ +${battleResult.goldReward}G +${battleResult.expReward}EXP${lvMsg}`, type: 'success', timestamp: Date.now() }
+                    });
+                } else {
+                    // ボス敗北: 村に強制移動
+                    const villagePos = getVillageStartPosition(pos);
+                    updatedPlayers = updatedPlayers.map(p =>
+                        p.id === player.id ? { ...p, position: villagePos, stats: { ...p.stats, hp: p.stats.maxHp, mp: p.stats.maxMp } } : p
+                    );
+                    await updateGameState(roomId, {
+                        players: updatedPlayers,
+                        lastLog: `💀 ${player.name} は ${boss.name} に敗北... 村に戻された！`,
+                        lastLogTimestamp: Date.now(),
+                        latestPopup: { message: `💀 ${boss.name} に敗北... 村に戻された！`, type: 'danger', timestamp: Date.now() }
+                    });
+                }
+                await new Promise(r => setTimeout(r, 2500));
+                await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                return;
+            }
+            case TileType.EMPTY:
+            default: {
+                await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                return;
+            }
         }
     };
 
