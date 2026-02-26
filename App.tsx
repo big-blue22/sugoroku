@@ -65,6 +65,11 @@ const App: React.FC = () => {
     const [isProcessingTurn, setIsProcessingTurn] = useState(false);
     const [isBoardBusy, setIsBoardBusy] = useState(false);
 
+    // Popup Queue System
+    const popupQueue = useRef<{ msg: string; type: PopupType; duration: number }[]>([]);
+    const popupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isShowingPopup = useRef(false);
+
     // Battle UI State
     const [activeBattle, setActiveBattle] = useState<{
         monster: MonsterDef;
@@ -170,7 +175,6 @@ const App: React.FC = () => {
 
             setTimeout(() => {
                 setIsRolling(false);
-                triggerPopup(`${roomState.diceValue} が出ました！`, 'info', 3000);
             }, 2000);
         }
     }, [roomState?.diceRollCount, roomState?.diceValue]);
@@ -182,13 +186,27 @@ const App: React.FC = () => {
         console.log(msg);
     };
 
-    const triggerPopup = (msg: string, type: PopupType = 'info', duration = 2000) => {
-        setPopupData({ msg, type });
+    const triggerPopup = useCallback((msg: string, type: PopupType = 'info', duration = 2500) => {
+        popupQueue.current.push({ msg, type, duration });
+        processPopupQueue();
+    }, []);
+
+    const processPopupQueue = useCallback(() => {
+        if (isShowingPopup.current || popupQueue.current.length === 0) return;
+
+        isShowingPopup.current = true;
+        const next = popupQueue.current.shift()!;
+        setPopupData({ msg: next.msg, type: next.type });
         setShowPopup(true);
-        setTimeout(() => {
+
+        if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
+        popupTimerRef.current = setTimeout(() => {
             setShowPopup(false);
-        }, duration);
-    };
+            isShowingPopup.current = false;
+            // Process next in queue after a brief gap
+            setTimeout(() => processPopupQueue(), 300);
+        }, next.duration);
+    }, []);
 
     const handleJoinGame = (id: string, pId: number, pName: string) => {
         setRoomId(id);
