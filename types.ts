@@ -30,6 +30,7 @@ export interface PlayerStats {
   level: number;
   exp: number;
   gold: number;
+  sp: number; // Stat Points for allocation
 }
 
 export const INITIAL_PLAYER_STATS: PlayerStats = {
@@ -44,6 +45,7 @@ export const INITIAL_PLAYER_STATS: PlayerStats = {
   level: 1,
   exp: 0,
   gold: 0,
+  sp: 0,
 };
 
 export interface Player {

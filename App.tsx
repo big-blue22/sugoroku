@@ -4,6 +4,7 @@ import SetupScreen from './components/SetupScreen';
 import Popup, { PopupType } from './components/Popup';
 import GameScene from './components/3d/GameScene';
 import BattleScreen from './components/BattleScreen';
+import LevelUpScreen, { StatAllocations } from './components/LevelUpScreen';
 import {
     subscribeToRoom,
     startGame,
@@ -12,7 +13,7 @@ import {
 } from './services/roomService';
 import { BOARD_SIZE, getTileInfo } from './constants';
 import { BOARD_FROM_CONFIG } from './boardConfig';
-import { checkLevelUp } from './services/battleEngine';
+import { checkLevelUp, getRequiredExp } from './services/battleEngine';
 import { resolveTreasure, resolveTrap, getVillageStartPosition } from './services/tileEvents';
 import { getRandomMonsterForZone, getBossForZone, MonsterDef } from './data/monsters';
 
@@ -488,17 +489,12 @@ const App: React.FC = () => {
                 gold: player.stats.gold + result.goldReward,
                 exp: player.stats.exp + result.expReward,
             };
+            // Check for level up - grant SP instead of auto-allocating
             const lvCheck = checkLevelUp(newStats);
             if (lvCheck.leveled) {
                 newStats = {
                     ...lvCheck.newStats,
-                    maxHp: lvCheck.newStats.maxHp + 6,
-                    hp: Math.min(lvCheck.newStats.hp + 6, lvCheck.newStats.maxHp + 6),
-                    maxMp: lvCheck.newStats.maxMp + 2,
-                    mp: Math.min(lvCheck.newStats.mp + 2, lvCheck.newStats.maxMp + 2),
-                    atk: lvCheck.newStats.atk + 1,
-                    def: lvCheck.newStats.def + 1,
-                    spd: lvCheck.newStats.spd + 1,
+                    sp: lvCheck.newStats.sp + lvCheck.spGained,
                 };
             }
             updatedPlayers = updatedPlayers.map(p =>
@@ -543,8 +539,55 @@ const App: React.FC = () => {
         setIsRolling(false);
         setIsBoardBusy(false);
 
+        // If player has SP to allocate, don't advance turn yet (LevelUpScreen will handle it)
+        const currentPlayer = updatedPlayers.find(p => p.id === ctx.player.id);
+        if (currentPlayer && currentPlayer.stats.sp > 0) {
+            // LevelUpScreen will be shown, turn will advance after stat allocation
+            await updateGameState(roomId, { players: updatedPlayers });
+            return;
+        }
+
         await nextTurn(roomId, updatedPlayers, roomState.activePlayerIndex);
     }, [roomId, roomState, activeBattle]);
+
+    // --- Stat Allocation Callback ---
+    const handleStatAllocation = useCallback(async (allocations: StatAllocations) => {
+        if (!roomId || !roomState || myPlayerId === null) return;
+
+        const myPlayer = roomState.players.find(p => p.id === myPlayerId);
+        if (!myPlayer) return;
+
+        const stats = { ...myPlayer.stats };
+        const totalUsed = Object.values(allocations).reduce((s, v) => s + v, 0);
+
+        // Apply allocations
+        stats.maxHp += allocations.hp * 6;
+        stats.hp = Math.min(stats.hp + allocations.hp * 6, stats.maxHp);
+        stats.maxMp += allocations.mp * 2;
+        stats.mp = Math.min(stats.mp + allocations.mp * 2, stats.maxMp);
+        stats.atk += allocations.atk;
+        stats.def += allocations.def;
+        stats.spd += allocations.spd;
+        stats.int += allocations.int;
+        stats.sp -= totalUsed;
+
+        const updatedPlayers = roomState.players.map(p =>
+            p.id === myPlayerId ? { ...p, stats } : p
+        );
+
+        await updateGameState(roomId, {
+            players: updatedPlayers,
+            lastLog: `📊 ${myPlayer.name} はステータスを強化した！`,
+            lastLogTimestamp: Date.now(),
+            latestPopup: {
+                message: `📊 ステータスを強化した！`,
+                type: 'success',
+                timestamp: Date.now()
+            }
+        });
+
+        await nextTurn(roomId, updatedPlayers, roomState.activePlayerIndex);
+    }, [roomId, roomState, myPlayerId]);
 
 
     // --- Render ---
@@ -563,6 +606,17 @@ const App: React.FC = () => {
                 playerSpells={[]}
                 isMimic={activeBattle.isMimic}
                 onBattleEnd={handleBattleEnd}
+            />
+        );
+    }
+
+    // Show level up screen if player has SP to allocate
+    const myPlayerForLevelUp = roomState.players.find(p => p.id === myPlayerId);
+    if (myPlayerForLevelUp && myPlayerForLevelUp.stats.sp > 0) {
+        return (
+            <LevelUpScreen
+                playerStats={myPlayerForLevelUp.stats}
+                onConfirm={handleStatAllocation}
             />
         );
     }
@@ -664,8 +718,25 @@ const App: React.FC = () => {
                             <span>DEF:{myPlayer.stats.def}</span>
                             <span>SPD:{myPlayer.stats.spd}</span>
                             <span>INT:{myPlayer.stats.int}</span>
-                            <span>EXP:{myPlayer.stats.exp}</span>
                         </div>
+                        {/* EXP Progress Bar */}
+                        <div className="mt-1.5">
+                            <div className="flex justify-between items-center text-[10px] mb-0.5">
+                                <span className="text-purple-400">✨ EXP</span>
+                                <span className="text-slate-500">{myPlayer.stats.exp} / {getRequiredExp(myPlayer.stats.level)}</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, (myPlayer.stats.exp / getRequiredExp(myPlayer.stats.level)) * 100)}%` }}
+                                />
+                            </div>
+                        </div>
+                        {myPlayer.stats.sp > 0 && (
+                            <div className="mt-1 text-[10px] text-yellow-400 font-bold animate-pulse">
+                                ⭐ SP:{myPlayer.stats.sp} 未配分
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
