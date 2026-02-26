@@ -539,6 +539,12 @@ const App: React.FC = () => {
         setIsRolling(false);
         setIsBoardBusy(false);
 
+        // CRITICAL: Update prevPlayersRef so the Board Movement Lock useEffect
+        // doesn't detect the position change (battle→village) as a board animation.
+        // Without this, large position changes (e.g. tile 18→0) would lock the board
+        // for (distance * 500 + 500)ms, causing a freeze.
+        prevPlayersRef.current = updatedPlayers;
+
         // If player has SP to allocate, don't advance turn yet (LevelUpScreen will handle it)
         const currentPlayer = updatedPlayers.find(p => p.id === ctx.player.id);
         if (currentPlayer && currentPlayer.stats.sp > 0) {
