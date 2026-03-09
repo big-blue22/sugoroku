@@ -10,9 +10,12 @@ import {
   where,
   limit,
   getDocs,
-  writeBatch
+  writeBatch,
+  runTransaction
 } from 'firebase/firestore';
-import { RoomState, Player, GamePhase, INITIAL_PLAYER_STATS } from '../types';
+import { RoomState, Player, GamePhase, INITIAL_PLAYER_STATS, RaidState, RaidParticipant, PlayerCommand } from '../types';
+import { MonsterDef } from '../data/monsters';
+import { initRaidBoss, processRaidRound } from './raidEngine';
 
 const ROOMS_COLLECTION = 'rooms';
 const ROOM_TTL_MS = 2 * 24 * 60 * 60 * 1000; // 48 hours (2 days)
@@ -169,4 +172,134 @@ export const nextTurn = async (roomId: string, currentPlayers: Player[], activeI
   };
 
   await updateDoc(doc(db, ROOMS_COLLECTION, roomId), updates);
+};
+
+// --- Raid Functions ---
+export const joinRaid = async (roomId: string, tileId: number, monster: MonsterDef, player: Player) => {
+    const roomRef = doc(db, 'rooms', roomId);
+    await runTransaction(db, async (transaction) => {
+        const roomDoc = await transaction.get(roomRef);
+        if (!roomDoc.exists()) return;
+
+        const state = roomDoc.data() as RoomState;
+
+        if (!state.activeRaids) state.activeRaids = {};
+        if (!state.defeatedBosses) state.defeatedBosses = [];
+
+        if (state.defeatedBosses.includes(tileId)) return; // Already dead
+
+        let raid = state.activeRaids[tileId];
+        if (!raid) {
+            raid = {
+                tileId,
+                bossState: initRaidBoss(monster),
+                participants: {},
+                round: 1,
+                status: 'WAITING_FOR_COMMANDS',
+                logs: [`${monster.name} が現れた！`],
+                turnOrder: []
+            };
+            state.activeRaids[tileId] = raid;
+        }
+
+        if (!raid.participants[player.id]) {
+            raid.participants[player.id] = {
+                playerId: player.id,
+                hp: player.stats.hp,
+                mp: player.stats.mp,
+                stats: player.stats,
+                buffs: {
+                    defStage: 0, atkStage: 0, magicBarrier: 0, fubaha: 0,
+                    sleep: false, sleepTurns: 0, manusa: false, manusaTurns: 0,
+                    stun: false, magicAwaken: false, magicAwakenTurns: 0,
+                    charge: false, chargeTurns: 0, eerieLight: 0, eerieLightTurns: 0,
+                    saika: false, saikaTurns: 0, spellSeal: false, spellSealTurns: 0,
+                    banished: false, banishedTurns: 0
+                },
+                command: null,
+                cp: 0,
+                isDead: player.stats.hp <= 0
+            };
+            raid.logs.push(`${player.name} が戦闘に参加した！`);
+        }
+
+        transaction.update(roomRef, { activeRaids: state.activeRaids });
+    });
+};
+
+export const submitRaidCommand = async (roomId: string, tileId: number, playerId: number, command: PlayerCommand) => {
+    const roomRef = doc(db, 'rooms', roomId);
+    await runTransaction(db, async (transaction) => {
+        const roomDoc = await transaction.get(roomRef);
+        if (!roomDoc.exists()) return;
+
+        const state = roomDoc.data() as RoomState;
+        const raid = state.activeRaids?.[tileId];
+        if (!raid || raid.status !== 'WAITING_FOR_COMMANDS') return;
+
+        const participant = raid.participants[playerId];
+        if (participant && !participant.isDead) {
+            participant.command = command;
+            transaction.update(roomRef, { [`activeRaids.${tileId}`]: raid });
+        }
+    });
+};
+
+export const processRaidTurnIfNeeded = async (roomId: string, tileId: number, monster: MonsterDef, allPlayers: Player[]) => {
+    const roomRef = doc(db, 'rooms', roomId);
+    await runTransaction(db, async (transaction) => {
+        const roomDoc = await transaction.get(roomRef);
+        if (!roomDoc.exists()) return;
+
+        const state = roomDoc.data() as RoomState;
+        const raid = state.activeRaids?.[tileId];
+        if (!raid || raid.status !== 'WAITING_FOR_COMMANDS') return;
+
+        // Check if all ALIVE participants have submitted commands
+        const participants = Object.values(raid.participants);
+        const aliveParticipants = participants.filter(p => !p.isDead && !p.buffs.banished);
+
+        if (aliveParticipants.length === 0) {
+            raid.status = 'DEFEAT';
+            transaction.update(roomRef, { [`activeRaids.${tileId}`]: raid });
+            return;
+        }
+
+        const allSubmitted = aliveParticipants.every(p => p.command !== null);
+
+        if (allSubmitted) {
+            raid.status = 'CALCULATING';
+            const { newRaid, roundLogs } = processRaidRound(raid, monster, allPlayers);
+            newRaid.logs = [...newRaid.logs, ...roundLogs];
+
+            // Keep logs capped
+            if (newRaid.logs.length > 50) newRaid.logs = newRaid.logs.slice(-50);
+
+            transaction.update(roomRef, { [`activeRaids.${tileId}`]: newRaid });
+        }
+    });
+};
+
+export const finalizeRaid = async (roomId: string, tileId: number, raidState: RaidState, playersToUpdate: Player[]) => {
+    const roomRef = doc(db, 'rooms', roomId);
+    await runTransaction(db, async (transaction) => {
+        const roomDoc = await transaction.get(roomRef);
+        if (!roomDoc.exists()) return;
+
+        const state = roomDoc.data() as RoomState;
+        if (!state.activeRaids) return;
+
+        delete state.activeRaids[tileId];
+
+        if (raidState.status === 'VICTORY') {
+            if (!state.defeatedBosses) state.defeatedBosses = [];
+            state.defeatedBosses.push(tileId);
+        }
+
+        transaction.update(roomRef, {
+            activeRaids: state.activeRaids,
+            defeatedBosses: state.defeatedBosses,
+            players: playersToUpdate
+        });
+    });
 };
