@@ -92,4 +92,73 @@ export interface RoomState {
   // Logs
   lastLog: string | null;
   lastLogTimestamp: number;
+
+  // Raid State
+  activeRaids?: Record<number, RaidState>; // Key is tileId
+  defeatedBosses?: number[]; // Array of tileIds
+}
+
+
+// --- Raid (Multiplayer Boss) Types ---
+export interface BuffState {
+    defStage: number; // -2 to +2
+    atkStage: number; // 0 to +2
+    magicBarrier: number; // 0, 1, 2
+    fubaha: number; // 0, 1, 2
+    sleep: boolean;
+    sleepTurns: number;
+    manusa: boolean;
+    manusaTurns: number;
+    stun: boolean;
+    magicAwaken: boolean;
+    magicAwakenTurns: number;
+    charge: boolean; // Next physical attack x2
+    chargeTurns: number;
+    eerieLight: number; // 0, 1, 2 (stage of magic vulnerability)
+    eerieLightTurns: number;
+    saika: boolean; // 1.2x damage taken
+    saikaTurns: number;
+    spellSeal: boolean; // Black mist
+    spellSealTurns: number;
+    banished: boolean; // Bashirura
+    banishedTurns: number;
+}
+
+export interface PlayerCommand {
+    type: 'attack' | 'spell' | 'item' | 'defend';
+    spellId?: string;
+    itemId?: string;
+    targetId?: string; // 'boss' or playerId
+}
+
+export interface RaidParticipant {
+    playerId: number;
+    hp: number;
+    mp: number;
+    stats: PlayerStats; // snapshot or reference
+    buffs: BuffState;
+    command: PlayerCommand | null;
+    cp: number; // Contribution points
+    isDead: boolean;
+}
+
+export interface RaidBossState {
+    id: string; // e.g. 'z1_boss'
+    hp: number;
+    maxHp: number;
+    buffs: BuffState;
+    lastActionId: string | null;
+    consecutiveActionCount: number;
+    phase: 'A' | 'B';
+    actionHistory: string[]; // for tracking cycle rules like every_3_boss_actions
+}
+
+export interface RaidState {
+    tileId: number; // Which tile this raid is happening on
+    bossState: RaidBossState;
+    participants: Record<number, RaidParticipant>;
+    round: number;
+    status: 'WAITING_FOR_PLAYERS' | 'WAITING_FOR_COMMANDS' | 'CALCULATING' | 'VICTORY' | 'DEFEAT' | 'TRANSITIONING';
+    logs: string[];
+    turnOrder: number[]; // Array of playerIds + 'boss' indicating execution order
 }

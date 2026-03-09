@@ -381,3 +381,51 @@ export const getRandomMonsterForZone = (zoneNum: number): MonsterDef | null => {
 export const getBossForZone = (zoneNum: number): MonsterDef | null => {
     return BOSS_MONSTERS.find(m => m.zone === zoneNum) || null;
 };
+
+
+export const Z7_BOSSES: MonsterDef[] = [
+    {
+        id: 'z7_atlas', name: 'アトラス', zone: 7, isBoss: true,
+        hp: 1100, atk: 34, def: 48, spd: 16, int: 10, manusaResist: 0.25, sleepResist: 0.15, stunResist: 0.20,
+        exp: 1500, goldMin: 9000, goldMax: 9000,
+        actions: [],
+        phaseBThreshold: 0.5,
+        phaseBActions: []
+    },
+    {
+        id: 'z7_bazuzu', name: 'バズズ', zone: 7, isBoss: true,
+        hp: 900, atk: 26, def: 40, spd: 24, int: 22, manusaResist: 0.25, sleepResist: 0.20, stunResist: 0.25,
+        exp: 1800, goldMin: 10500, goldMax: 10500,
+        actions: [],
+        phaseBThreshold: 0.5,
+        phaseBActions: []
+    },
+    {
+        id: 'z7_belial', name: 'ベリアル', zone: 7, isBoss: true,
+        hp: 980, atk: 26, def: 42, spd: 20, int: 26, manusaResist: 0.25, sleepResist: 0.20, stunResist: 0.25,
+        exp: 2100, goldMin: 12000, goldMax: 12000,
+        actions: [],
+        phaseBThreshold: 0.5,
+        phaseBActions: []
+    },
+    {
+        id: 'z7_hargon', name: '大神官ハーゴン', zone: 7, isBoss: true,
+        hp: 1000, atk: 26, def: 40, spd: 22, int: 24, manusaResist: 0.0, sleepResist: 0.0, stunResist: 0.0,
+        exp: 2600, goldMin: 15000, goldMax: 15000,
+        actions: [],
+        phaseBThreshold: 0.5,
+        phaseBActions: []
+    },
+    {
+        id: 'z7_shido', name: 'シドー', zone: 7, isBoss: true,
+        hp: 820, atk: 30, def: 42, spd: 20, int: 22, manusaResist: 0.0, sleepResist: 0.0, stunResist: 0.0,
+        exp: 3600, goldMin: 21000, goldMax: 21000,
+        actions: [],
+        phaseBThreshold: 0.5,
+        phaseBActions: []
+    }
+];
+
+export const getZ7BossByName = (name: string): MonsterDef | undefined => {
+    return Z7_BOSSES.find(b => b.name === name || b.name.includes(name));
+};

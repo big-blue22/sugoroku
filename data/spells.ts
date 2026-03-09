@@ -125,3 +125,22 @@ export const INN_PRICES: Record<string, number> = {
 export const getSpellById = (id: string): SpellDef | undefined => {
     return PLAYER_SPELLS.find(s => s.id === id);
 };
+
+// --- Items (Consumables) ---
+export interface ItemDef {
+    id: string;
+    name: string;
+    price: number;
+    description: string;
+}
+
+export const ITEMS: ItemDef[] = [
+    { id: 'boost_s', name: 'ブーストダイスS', price: 80, description: '攻撃ダイス+1d6' },
+    { id: 'boost_m', name: 'ブーストダイスM', price: 150, description: '攻撃ダイス+2d6' },
+    { id: 'boost_l', name: 'ブーストダイスL', price: 210, description: '攻撃ダイス+3d6' },
+    { id: 'trap_guard', name: 'トラップガード', price: 260, description: '罠を1回防ぐ(所持上限1)' },
+    { id: 'slow_dice_1', name: 'のろのろダイス', price: 90, description: '次の移動ダイスを1d4にする' },
+    { id: 'slow_dice_2', name: '超のろのろダイス', price: 140, description: '次の移動ダイスを1d3にする' },
+];
+
+export const ITEM_SHOP: string[] = ['boost_s', 'boost_m', 'boost_l', 'trap_guard', 'slow_dice_1', 'slow_dice_2'];

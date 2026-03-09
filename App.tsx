@@ -4,18 +4,23 @@ import SetupScreen from './components/SetupScreen';
 import Popup, { PopupType } from './components/Popup';
 import GameScene from './components/3d/GameScene';
 import BattleScreen from './components/BattleScreen';
+import { RaidBattleScreen } from './components/RaidBattleScreen';
 import LevelUpScreen, { StatAllocations } from './components/LevelUpScreen';
 import {
     subscribeToRoom,
     startGame,
     updateGameState,
-    nextTurn
+    nextTurn,
+    joinRaid,
+    submitRaidCommand,
+    processRaidTurnIfNeeded,
+    finalizeRaid
 } from './services/roomService';
 import { BOARD_SIZE, getTileInfo } from './constants';
 import { BOARD_FROM_CONFIG } from './boardConfig';
 import { checkLevelUp, getRequiredExp } from './services/battleEngine';
 import { resolveTreasure, resolveTrap, getVillageStartPosition } from './services/tileEvents';
-import { getRandomMonsterForZone, getBossForZone, MonsterDef } from './data/monsters';
+import { getRandomMonsterForZone, getBossForZone, MonsterDef, getZ7BossByName } from './data/monsters';
 
 const buildBoard = (): Tile[] => {
     return BOARD_FROM_CONFIG;
@@ -72,6 +77,7 @@ const App: React.FC = () => {
     const isShowingPopup = useRef(false);
 
     // Battle UI State
+    const [activeRaidTileId, setActiveRaidTileId] = useState<number | null>(null);
     const [activeBattle, setActiveBattle] = useState<{
         monster: MonsterDef;
         isMimic?: boolean;
@@ -446,13 +452,29 @@ const App: React.FC = () => {
             }
             case TileType.BOSS: {
                 // 対話型ボス戦闘を開始
-                const boss = getBossForZone(zoneNum);
+                let boss = getBossForZone(zoneNum);
+
+                // For Z7 Bosses
+                if (zoneNum === 7 && tile.meta?.bossName) {
+                    boss = getZ7BossByName(tile.meta.bossName);
+                }
+
                 if (!boss) {
                     await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
                     return;
                 }
-                pendingBattleContext.current = { pos, player, currentPlayers: updatedPlayers };
-                setActiveBattle({ monster: boss });
+
+                // --- Raid System Logic ---
+                // If boss already defeated, treat as empty
+                if (roomState?.defeatedBosses?.includes(tile.id)) {
+                    await nextTurn(roomId, updatedPlayers, roomState!.activePlayerIndex);
+                    return;
+                }
+
+                await joinRaid(roomId, tile.id, boss, player);
+                setActiveRaidTileId(tile.id);
+                // Turn logic pauses here while player is in raid.
+                // DO NOT call nextTurn. The Raid UI handles completion.
                 return;
             }
             case TileType.EMPTY:
@@ -601,6 +623,35 @@ const App: React.FC = () => {
 
     if (!roomId || !roomState) {
         return <SetupScreen onJoinGame={handleJoinGame} />;
+    }
+
+
+    // Show raid screen if active
+    if (activeRaidTileId !== null && roomState?.activeRaids?.[activeRaidTileId]) {
+        const raid = roomState.activeRaids[activeRaidTileId];
+        const bossName = raid.bossState.id.replace('z7_', '');
+        const bossMonster = getZ7BossByName(bossName) || getBossForZone(Math.floor(activeRaidTileId / 50) + 1);
+
+        if (!bossMonster) {
+            setActiveRaidTileId(null);
+        } else {
+            // Check if raid is finished
+            if (!roomState.activeRaids[activeRaidTileId]) {
+                setActiveRaidTileId(null);
+                // Re-enable player turn if it was their turn?
+                // For simplicity, just close the UI.
+            } else {
+                return (
+                    <RaidBattleScreen
+                        raidState={raid}
+                        monster={bossMonster}
+                        myPlayerId={myPlayerId!}
+                        allPlayers={roomState.players}
+                        onCommandSubmit={(cmd) => submitRaidCommand(roomId!, activeRaidTileId, myPlayerId!, cmd)}
+                    />
+                );
+            }
+        }
     }
 
     // Show battle screen if in battle
