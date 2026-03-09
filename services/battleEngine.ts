@@ -537,11 +537,21 @@ export const checkLevelUp = (stats: PlayerStats): { leveled: boolean; newStats: 
 // ============================================================
 // Legacy: Auto-simulate for tileEvents (mimic/ambush only)
 // ============================================================
+
+export interface BattleResult {
+    victory: boolean;
+    playerHpAfter: number;
+    playerMpAfter: number;
+    goldReward: number;
+    expReward: number;
+    monsterName: string;
+}
+
 export const simulateSoloBattle = (
     playerStats: PlayerStats,
     monster: MonsterDef,
     playerSpells: string[] = []
-): { victory: boolean; playerHpAfter: number; playerMpAfter: number; goldReward: number; expReward: number; monsterName: string } => {
+): BattleResult => {
     let state = initBattle(playerStats, monster, playerSpells);
 
     // Auto-battle loop
